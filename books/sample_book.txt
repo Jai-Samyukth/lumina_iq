@@ -1,0 +1,100 @@
+# Sample Learning Material
+
+## Introduction to Programming
+
+Programming is the process of creating a set of instructions that tell a computer how to perform a task. Programming can be done using a variety of computer programming languages, such as JavaScript, Python, and C++.
+
+### Key Concepts
+
+1. **Variables**: Storage locations with an associated name that contain data
+2. **Functions**: Reusable blocks of code that perform specific tasks
+3. **Loops**: Structures that repeat a block of code
+4. **Conditionals**: Statements that perform different actions based on different conditions
+
+### Python Basics
+
+Python is a high-level, interpreted programming language with dynamic semantics. Its high-level built-in data structures, combined with dynamic typing and dynamic binding, make it very attractive for Rapid Application Development.
+
+#### Variables in Python
+```python
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+```
+
+#### Functions in Python
+```python
+def greet(name):
+    return f"Hello, {name}!"
+
+result = greet("Bob")
+print(result)  # Output: Hello, Bob!
+```
+
+#### Loops in Python
+```python
+# For loop
+for i in range(5):
+    print(i)
+
+# While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+```
+
+#### Conditionals in Python
+```python
+age = 18
+if age >= 18:
+    print("You are an adult")
+else:
+    print("You are a minor")
+```
+
+### Data Structures
+
+Python provides several built-in data structures:
+
+1. **Lists**: Ordered, mutable collections
+2. **Tuples**: Ordered, immutable collections
+3. **Dictionaries**: Key-value pairs
+4. **Sets**: Unordered collections of unique elements
+
+#### Examples
+```python
+# List
+fruits = ["apple", "banana", "orange"]
+
+# Tuple
+coordinates = (10, 20)
+
+# Dictionary
+person = {"name": "Alice", "age": 25}
+
+# Set
+unique_numbers = {1, 2, 3, 4, 5}
+```
+
+### Object-Oriented Programming
+
+Python supports object-oriented programming (OOP) which allows you to create classes and objects.
+
+```python
+class Car:
+    def __init__(self, brand, model):
+        self.brand = brand
+        self.model = model
+    
+    def start_engine(self):
+        return f"The {self.brand} {self.model} engine is starting!"
+
+my_car = Car("Toyota", "Camry")
+print(my_car.start_engine())
+```
+
+### Conclusion
+
+This is a basic introduction to programming concepts using Python. Practice these concepts to build a strong foundation in programming.
