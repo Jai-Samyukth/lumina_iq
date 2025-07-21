@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
-import { 
-  BookOpen, 
-  LogOut, 
-  FileText, 
-  User, 
+import {
+  BookOpen,
+  LogOut,
+  FileText,
+  User,
   Hash,
   HardDrive,
-  Calendar,
   Upload as UploadIcon,
   HelpCircle,
   ChevronDown,
@@ -90,7 +89,9 @@ export default function QAPage() {
 
       if (!jsonMatch) {
         // Try to find JSON between code blocks
-        const codeBlockMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        const codeBlockMatch = aiResponse.match(/```
+(?:json)?\s*(\{[\s\S]*?\})\s*
+```/);
         if (codeBlockMatch) {
           jsonMatch = [codeBlockMatch[1]];
         }
@@ -150,7 +151,9 @@ export default function QAPage() {
       let jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
-        const codeBlockMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        const codeBlockMatch = aiResponse.match(/```
+(?:json)?\s*(\{[\s\S]*?\})\s*
+```/);
         if (codeBlockMatch) {
           jsonMatch = [codeBlockMatch[1]];
         }
@@ -472,40 +475,57 @@ Please provide a thorough, well-structured answer that helps the user learn from
                           <BookOpen className="h-4 w-4 text-white" />
                         </div>
                         <h3 className="text-lg font-semibold text-slate-800">{chapter.title}</h3>
-                        <span className="text-sm text-slate-500">({chapter.questions.length} questions)</span>
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          {chapter.questions.length} questions
+                        </span>
                       </div>
-                      {chapter.expanded ? (
-                        <ChevronDown className="h-5 w-5 text-slate-600" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-slate-600" />
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {chapter.loading && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        )}
+                        {chapter.expanded ? (
+                          <ChevronDown className="h-5 w-5 text-slate-600" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-slate-600" />
+                        )}
+                      </div>
                     </button>
-                    
+
                     {chapter.expanded && (
-                      <div className="px-4 pb-4 space-y-2">
+                      <div className="px-4 pb-4 space-y-3">
                         {chapter.questions.map((question) => (
-                          <div key={question.id} className="border border-slate-200 rounded-lg">
+                          <div key={question.id} className="bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
                             <button
                               onClick={() => handleQuestionClick(chapter.id, question.id)}
-                              className="w-full text-left p-3 hover:bg-slate-50 transition-colors flex items-center justify-between"
+                              className="w-full text-left p-4 hover:bg-white/40 transition-colors rounded-lg"
                               disabled={question.loading}
                             >
-                              <div className="flex items-center space-x-2">
-                                <HelpCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                <span className="text-sm text-slate-700">{question.question}</span>
-                              </div>
-                              {question.loading && (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                              )}
-                            </button>
-                            
-                            {question.answer && (
-                              <div className="px-3 pb-3 border-t border-slate-200 bg-slate-50/50">
-                                <div className="pt-3 text-sm text-slate-700 leading-relaxed">
-                                  {question.answer}
+                              <div className="flex items-start space-x-3">
+                                <div className="flex-shrink-0 mt-1">
+                                  {question.loading ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                  ) : question.answer ? (
+                                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    </div>
+                                  ) : (
+                                    <HelpCircle className="h-4 w-4 text-blue-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-slate-800 font-medium mb-2">{question.question}</p>
+                                  {question.answer && (
+                                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-100">
+                                      <div className="prose prose-sm max-w-none text-slate-700">
+                                        {question.answer.split('\n').map((paragraph, idx) => (
+                                          <p key={idx} className="mb-2 last:mb-0">{paragraph}</p>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            )}
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -517,59 +537,3117 @@ Please provide a thorough, well-structured answer that helps the user learn from
           </div>
         </div>
 
-        {/* PDF Metadata Panel */}
+        {/* Sidebar */}
         {pdfInfo && (
-          <div className="w-72 bg-white/60 backdrop-blur-sm border-l border-white/20 p-4 overflow-y-auto">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-3 mb-4">
-              <h3 className="text-base font-bold text-white mb-1 flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>Document Info</span>
-              </h3>
-              <p className="text-blue-100 text-xs">Q&A Learning Mode</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-white/80 rounded-lg p-3 shadow-sm">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filename</label>
-                <p className="text-xs text-slate-800 font-medium break-words mt-1">{pdfInfo.filename}</p>
-              </div>
-              
-              <div className="bg-white/80 rounded-lg p-3 shadow-sm">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Title</label>
-                <p className="text-xs text-slate-800 font-medium mt-1">{pdfInfo.metadata.title}</p>
-              </div>
-              
-              <div className="bg-white/80 rounded-lg p-3 shadow-sm">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center space-x-1">
-                  <User className="h-3 w-3" />
-                  <span>Author</span>
-                </label>
-                <p className="text-xs text-slate-800 font-medium mt-1">{pdfInfo.metadata.author}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-white/80 rounded-lg p-2 shadow-sm">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center space-x-1">
-                    <Hash className="h-3 w-3" />
-                    <span>Pages</span>
-                  </label>
-                  <p className="text-sm font-bold text-slate-800 mt-1">{pdfInfo.metadata.pages}</p>
-                </div>
-                
-                <div className="bg-white/80 rounded-lg p-2 shadow-sm">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center space-x-1">
-                    <HardDrive className="h-3 w-3" />
-                    <span>Size</span>
-                  </label>
-                  <p className="text-xs font-bold text-slate-800 mt-1">{formatFileSize(pdfInfo.metadata.file_size)}</p>
+          <div className="w-80 bg-white/60 backdrop-blur-sm border-l border-white/20 p-6 overflow-y-auto">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Document Info
+                </h3>
+                <div className="space-y-3">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filename</label>
+                    <p className="text-sm font-medium text-slate-800 mt-1 break-words">{pdfInfo.filename}</p>
+                  </div>
+
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">File Size</label>
+                    <p className="text-sm font-medium text-slate-800 mt-1">{formatFileSize(pdfInfo.metadata?.file_size || 0)}</p>
+                  </div>
+
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pages</label>
+                    <p className="text-sm font-medium text-slate-800 mt-1">{pdfInfo.metadata?.pages || 'Unknown'}</p>
+                  </div>
+
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Selected Date</label>
+                    <p className="text-sm font-medium text-slate-800 mt-1">{formatDate(pdfInfo.selected_at || 'Unknown')}</p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
-                <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
-                <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
-                <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+assName="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={testAIConnection}
+                    disabled={testingAI}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingAI ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Testing...</span>
+                      </div>
+                    ) : (
+                      'Test AI Connection'
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    disabled={generatingQuestions}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingQuestions ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Regenerate Questions'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {chapters.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
+                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
+                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
+                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
+                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
