@@ -1,9 +1,15 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from typing import Optional
 from models.chat import ChatMessage, ChatResponse
 from services.chat_service import ChatService
 from utils.security import verify_token
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+class QuestionGenerationRequest(BaseModel):
+    topic: Optional[str] = None
+    count: Optional[int] = 25
 
 @router.post("/", response_model=ChatResponse)
 async def chat(
@@ -25,7 +31,8 @@ async def clear_chat_history(token: str = Depends(verify_token)):
 
 @router.post("/generate-questions", response_model=ChatResponse)
 async def generate_questions(
+    request: QuestionGenerationRequest,
     token: str = Depends(verify_token)
 ):
-    """Generate Q&A questions from the selected PDF content"""
-    return await ChatService.generate_questions(token)
+    """Generate Q&A questions from the selected PDF content, optionally focused on a specific topic"""
+    return await ChatService.generate_questions(token, request.topic, request.count)

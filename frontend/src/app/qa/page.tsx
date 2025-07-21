@@ -42,6 +42,8 @@ export default function QAPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [testingAI, setTestingAI] = useState(false);
+  const [questionTopic, setQuestionTopic] = useState('');
+  const [questionCount, setQuestionCount] = useState(25);
   
   const { logout, user } = useAuth();
   const router = useRouter();
@@ -56,7 +58,7 @@ export default function QAPage() {
       const info = await pdfApi.getPDFInfo();
       console.log('PDF info loaded:', info);
       setPdfInfo(info);
-      await generateChapterQuestions();
+      // Don't automatically generate questions - wait for user to click
     } catch (error) {
       console.error('Error loading PDF info:', error);
       // Show error message instead of redirecting immediately
@@ -67,15 +69,16 @@ export default function QAPage() {
     }
   };
 
-  const generateChapterQuestions = async () => {
+  const generateChapterQuestions = async (topic?: string) => {
     if (!pdfInfo) return;
 
     setGeneratingQuestions(true);
     try {
-      console.log('Starting question generation for:', pdfInfo.filename);
+      const topicToUse = topic || questionTopic.trim();
+      console.log('Starting question generation for:', pdfInfo.filename, 'Topic:', topicToUse);
 
       // Use the dedicated question generation endpoint that includes full PDF content
-      const response = await chatApi.generateQuestions();
+      const response = await chatApi.generateQuestions(topicToUse, questionCount);
 
       console.log('AI Response received:', response.response.substring(0, 200) + '...');
 
@@ -98,24 +101,25 @@ export default function QAPage() {
           const parsedData = JSON.parse(jsonMatch[0]);
           console.log('Parsed data:', parsedData);
 
-          if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
-            const generatedChapters: Chapter[] = parsedData.chapters.map((chapter: any, index: number) => ({
-              id: `chapter-${index}`,
-              title: chapter.title || `Chapter ${index + 1}`,
-              questions: (chapter.questions || []).slice(0, 15).map((q: string, qIndex: number) => ({
-                id: `q-${index}-${qIndex}`,
+          if (parsedData.questions && Array.isArray(parsedData.questions)) {
+            // Create a single chapter with all questions
+            const generatedChapters: Chapter[] = [{
+              id: 'main-questions',
+              title: `Questions for: ${pdfInfo?.filename}${topicToUse ? ` - Topic: ${topicToUse}` : ''}`,
+              questions: parsedData.questions.map((q: string, qIndex: number) => ({
+                id: `q-${qIndex}`,
                 question: q,
                 answer: undefined,
                 loading: false
               })),
-              expanded: false,
+              expanded: true, // Always expanded since there's only one section
               loading: false
-            }));
+            }];
 
-            console.log('Generated chapters:', generatedChapters.length);
+            console.log('Generated questions:', parsedData.questions.length);
             setChapters(generatedChapters);
           } else {
-            throw new Error('Invalid chapter structure');
+            throw new Error('Invalid questions structure - expected questions array');
           }
         } catch (parseError) {
           console.error('JSON parsing error:', parseError);
@@ -157,21 +161,22 @@ export default function QAPage() {
           const parsedData = JSON.parse(jsonMatch[0]);
           console.log('Parsed data from default chapters:', parsedData);
 
-          if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
-            const generatedChapters: Chapter[] = parsedData.chapters.map((chapter: any, index: number) => ({
-              id: `chapter-${index}`,
-              title: chapter.title || `Chapter ${index + 1}`,
-              questions: (chapter.questions || []).slice(0, 15).map((q: string, qIndex: number) => ({
-                id: `q-${index}-${qIndex}`,
+          if (parsedData.questions && Array.isArray(parsedData.questions)) {
+            // Create a single chapter with all questions
+            const generatedChapters: Chapter[] = [{
+              id: 'main-questions',
+              title: `Questions for: ${pdfInfo?.filename}${questionTopic.trim() ? ` - Topic: ${questionTopic.trim()}` : ''}`,
+              questions: parsedData.questions.map((q: string, qIndex: number) => ({
+                id: `q-${qIndex}`,
                 question: q,
                 answer: undefined,
                 loading: false
               })),
-              expanded: false,
+              expanded: true,
               loading: false
-            }));
+            }];
 
-            if (generatedChapters.length > 0) {
+            if (generatedChapters[0].questions.length > 0) {
               setChapters(generatedChapters);
               return;
             }
@@ -241,8 +246,7 @@ export default function QAPage() {
     ));
 
     try {
-      const response = await chatApi.sendMessage({
-        message: `You are an educational AI assistant. Based on the FULL content of the document "${pdfInfo?.filename}", please provide a comprehensive and detailed answer to this question:
+      const response = await chatApi.sendMessage(`You are an educational AI assistant. Based on the FULL content of the document "${pdfInfo?.filename}", please provide a comprehensive and detailed answer to this question:
 
 QUESTION: "${question.question}"
 
@@ -255,8 +259,7 @@ REQUIREMENTS:
 6. If the question asks for examples, provide the actual examples from the document
 7. If the question asks for definitions, use the exact definitions from the text
 
-Please provide a thorough, well-structured answer that helps the user learn from the document content.`
-      });
+Please provide a thorough, well-structured answer that helps the user learn from the document content.`);
 
       console.log('Answer received for question:', question.question);
 
@@ -315,9 +318,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
   const testAIConnection = async () => {
     setTestingAI(true);
     try {
-      const response = await chatApi.sendMessage({
-        message: "Please respond with 'AI connection working' to test the connection."
-      });
+      const response = await chatApi.sendMessage("Please respond with 'AI connection working' to test the connection.");
       alert(`AI Response: ${response.response}`);
     } catch (error) {
       alert(`AI Connection Error: ${error}`);
@@ -403,7 +404,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
                   Generating Questions...
                 </h3>
                 <p className="text-slate-600 max-w-md mx-auto leading-relaxed">
-                  AI is analyzing your document "{pdfInfo?.filename}" and creating comprehensive questions for each chapter.
+                  AI is analyzing your document "{pdfInfo?.filename}" and creating 25 comprehensive questions{questionTopic.trim() ? ` focused on "${questionTopic.trim()}"` : ' based on the entire content'}.
                 </p>
                 <div className="mt-4 text-sm text-slate-500">
                   This may take 30-60 seconds...
@@ -411,35 +412,52 @@ Please provide a thorough, well-structured answer that helps the user learn from
               </div>
             ) : chapters.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-red-100 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                  <HelpCircle className="h-8 w-8 text-red-600" />
+                <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <Sparkles className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">
-                  No Questions Generated
+                  Ready to Generate Questions
                 </h3>
-                <p className="text-slate-600 max-w-md mx-auto leading-relaxed mb-4">
-                  Unable to generate questions from the document. This might be due to:
+                <p className="text-slate-600 max-w-md mx-auto leading-relaxed mb-6">
+                  Your document "{pdfInfo?.filename}" is loaded and ready. You can generate questions for the entire document or focus on a specific topic.
                 </p>
-                <ul className="text-sm text-slate-600 text-left max-w-md mx-auto space-y-1">
-                  <li>• Document content is too short</li>
-                  <li>• AI service is temporarily unavailable</li>
-                  <li>• Document format is not supported</li>
-                </ul>
-                <div className="mt-4 space-x-3">
-                  <button
-                    onClick={() => generateChapterQuestions()}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                  >
-                    Try Again
-                  </button>
-                  <button
-                    onClick={testAIConnection}
-                    disabled={testingAI}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 disabled:opacity-50"
-                  >
-                    {testingAI ? 'Testing...' : 'Test AI'}
-                  </button>
+
+                {/* Topic Input Box */}
+                <div className="max-w-md mx-auto mb-6">
+                  <label htmlFor="questionTopic" className="block text-sm font-medium text-slate-700 mb-2 text-left">
+                    Specific Topic (Optional)
+                  </label>
+                  <input
+                    id="questionTopic"
+                    type="text"
+                    value={questionTopic}
+                    onChange={(e) => setQuestionTopic(e.target.value)}
+                    placeholder="e.g., 'machine learning algorithms', 'chapter 3', 'data structures'..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+                  />
+                  <p className="text-xs text-slate-500 mt-1 text-left">
+                    Leave empty to generate questions about the entire document, or specify a topic to focus on specific content.
+                  </p>
                 </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto mb-6">
+                  <p className="text-sm text-blue-800">
+                    <strong>What you'll get:</strong>
+                  </p>
+                  <ul className="text-sm text-blue-700 text-left mt-2 space-y-1">
+                    <li>• 25 comprehensive questions {questionTopic.trim() ? `focused on "${questionTopic.trim()}"` : 'covering the entire document'}</li>
+                    <li>• Questions about key concepts, definitions, and examples</li>
+                    <li>• Critical thinking questions for deeper understanding</li>
+                    <li>• Click any question to get detailed AI-powered answers</li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => generateChapterQuestions()}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <Sparkles className="h-5 w-5 inline mr-2" />
+                  Generate Questions{questionTopic.trim() ? ` about "${questionTopic.trim()}"` : ''}
+                </button>
               </div>
             ) : (
               <div className="space-y-4">

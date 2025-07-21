@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-const API_BASE_URL = 'http://localhost:8002/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 // Create axios instance with interceptors
 const api = axios.create({
@@ -118,8 +118,8 @@ export const chatApi = {
     return response.data;
   },
 
-  async generateQuestions(): Promise<ChatResponse> {
-    const response = await api.post('/chat/generate-questions');
+  async generateQuestions(topic?: string, count?: number): Promise<ChatResponse> {
+    const response = await api.post('/chat/generate-questions', { topic, count });
     return response.data;
   },
 };

@@ -14,23 +14,48 @@ class PDFService:
     @staticmethod
     async def extract_text_from_pdf(file_path: str) -> str:
         text = ""
+        print(f"Extracting text from PDF: {file_path}")
+
         try:
             with open(file_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
+                print(f"PDF has {len(pdf_reader.pages)} pages")
+
+                for i, page in enumerate(pdf_reader.pages):
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                        print(f"Page {i+1}: extracted {len(page_text)} characters")
+                    else:
+                        print(f"Page {i+1}: no text extracted")
+
         except Exception as e:
+            print(f"PyPDF2 extraction failed: {e}, trying pdfplumber...")
             # Fallback to pdfplumber
             try:
                 with pdfplumber.open(file_path) as pdf:
-                    for page in pdf.pages:
+                    print(f"PDF has {len(pdf.pages)} pages (pdfplumber)")
+
+                    for i, page in enumerate(pdf.pages):
                         page_text = page.extract_text()
                         if page_text:
                             text += page_text + "\n"
+                            print(f"Page {i+1}: extracted {len(page_text)} characters (pdfplumber)")
+                        else:
+                            print(f"Page {i+1}: no text extracted (pdfplumber)")
+
             except Exception as e2:
+                print(f"Both extraction methods failed: PyPDF2={e}, pdfplumber={e2}")
                 raise HTTPException(status_code=500, detail=f"Failed to extract text from PDF: {str(e2)}")
 
-        return text.strip()
+        extracted_text = text.strip()
+        print(f"Total extracted text: {len(extracted_text)} characters")
+
+        if len(extracted_text) < 50:
+            print("Warning: Very little text extracted from PDF")
+            print(f"Extracted content: '{extracted_text[:100]}'")
+
+        return extracted_text
 
     @staticmethod
     async def get_pdf_metadata(file_path: str) -> dict:
