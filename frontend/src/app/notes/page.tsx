@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBook } from '@/contexts/BookContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -44,6 +45,7 @@ export default function NotesPage() {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
   const { logout, user } = useAuth();
+  const { selectedBook } = useBook();
   const router = useRouter();
 
   useEffect(() => {
@@ -56,24 +58,26 @@ export default function NotesPage() {
       setPdfInfo(info);
     } catch (error) {
       console.error('Failed to load PDF info:', error);
-      router.push('/upload');
+      // Don't redirect, just continue with book selection mode
+      setPdfInfo(null);
     } finally {
       setInitialLoading(false);
     }
   };
 
   const generateNotes = async () => {
-    if (!pdfInfo || !notesTopic.trim()) return;
+    if ((!selectedBook && !pdfInfo) || !notesTopic.trim()) return;
 
     setGeneratingNotes(true);
     setCurrentStep('generating');
-    
+
     try {
       const topicToUse = notesTopic.trim();
-      console.log('Starting notes generation for:', pdfInfo.filename, 'Topic:', topicToUse, 'Size:', notesSize);
+      const documentName = selectedBook ? selectedBook.title : pdfInfo?.filename || 'the selected document';
+      console.log('Starting notes generation for:', documentName, 'Topic:', topicToUse, 'Size:', notesSize);
 
       // Create a detailed prompt for notes generation
-      const notesPrompt = `Generate comprehensive study notes on the topic "${topicToUse}" based on the document "${pdfInfo.filename}". 
+      const notesPrompt = `Generate comprehensive study notes on the topic "${topicToUse}" based on the document "${documentName}".
 
 Size requirement: ${notesSize === 'brief' ? 'Brief (1-2 pages)' : notesSize === 'detailed' ? 'Detailed (3-5 pages)' : 'Comprehensive (5+ pages)'}
 
@@ -246,7 +250,7 @@ Make the notes comprehensive, well-organized, and suitable for studying.`;
           <div class="header">
             <h1>${notesTopic}</h1>
             <p style="color: #6b7280; margin: 0;">Study Notes • ${notesSize.charAt(0).toUpperCase() + notesSize.slice(1)} Format</p>
-            <p style="color: #9ca3af; font-size: 0.9em; margin: 5px 0 0 0;">Generated from: ${pdfInfo?.filename || 'PDF Document'}</p>
+            <p style="color: #9ca3af; font-size: 0.9em; margin: 5px 0 0 0;">Generated from: ${selectedBook ? selectedBook.title : pdfInfo?.filename || 'Document'}</p>
           </div>
           <div id="content"></div>
           <div class="footer">
@@ -318,19 +322,13 @@ Make the notes comprehensive, well-organized, and suitable for studying.`;
     );
   }
 
-  if (!pdfInfo) {
+  if (!selectedBook && !pdfInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">No PDF Selected</h2>
-          <p className="text-slate-600 mb-4">Please select a PDF document first.</p>
-          <button
-            onClick={() => router.push('/upload')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Select PDF
-          </button>
+          <AlertCircle className="h-16 w-16 text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-text mb-2">No Book Selected</h2>
+          <p className="text-text-secondary mb-4">Please select a book using the floating button to start taking notes.</p>
         </div>
       </div>
     );
@@ -369,22 +367,34 @@ Make the notes comprehensive, well-organized, and suitable for studying.`;
         </div>
       </div>
 
-      {/* PDF Info Bar */}
+      {/* Document Info Bar */}
       <div className="bg-white/60 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <FileText className="h-5 w-5 text-green-600" />
               <div>
-                <p className="font-medium text-slate-800">{pdfInfo.filename}</p>
+                <p className="font-medium text-slate-800">
+                  {selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown Document'}
+                </p>
                 <div className="flex items-center space-x-4 text-sm text-slate-600">
                   <span className="flex items-center space-x-1">
                     <Hash className="h-3 w-3" />
-                    <span>{pdfInfo.metadata.pages} pages</span>
+                    <span>
+                      {selectedBook ?
+                        (selectedBook.metadata?.pages || 10) :
+                        (pdfInfo?.metadata?.pages || 'Unknown')
+                      } pages
+                    </span>
                   </span>
                   <span className="flex items-center space-x-1">
                     <HardDrive className="h-3 w-3" />
-                    <span>{(pdfInfo.metadata.file_size / 1024).toFixed(1)} KB</span>
+                    <span>
+                      {selectedBook ?
+                        ((selectedBook.metadata?.file_size || 0) / 1024).toFixed(1) :
+                        ((pdfInfo?.metadata?.file_size || 0) / 1024).toFixed(1)
+                      } KB
+                    </span>
                   </span>
                 </div>
               </div>

@@ -3,20 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, User, Lock, AlertCircle } from 'lucide-react';
+import { User, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import Header from '@/components/Header';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('vsbec');
+  const [password, setPassword] = useState('vsbec');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/upload');
+      router.push('/about');
     }
   }, [isAuthenticated, router]);
 
@@ -27,7 +30,7 @@ export default function LoginPage() {
 
     try {
       await login(username, password);
-      router.push('/upload');
+      router.push('/about');
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -36,106 +39,132 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-full">
-              <BookOpen className="h-8 w-8 text-white" />
-            </div>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to LearnAI
-          </h2>
-          <p className="text-gray-600">
-            Your intelligent learning companion
-          </p>
+    <>
+      <Header />
+      <div className="min-h-screen bg-background flex">
+        {/* Left Column - Image (60%) */}
+        <div className="hidden lg:flex lg:w-3/5 relative">
+          <Image
+            src="/pexels-cottonbro-4153146.jpg"
+            alt="Learning environment"
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 1024px) 0vw, 60vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20" />
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <span className="text-red-700 text-sm">{error}</span>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="Enter your username"
-                />
-              </div>
+        {/* Right Column - Login Form (40%) */}
+        <div className="w-full lg:w-2/5 flex items-center justify-center p-8 lg:p-12">
+          <div className="w-full max-w-md space-y-8">
+            {/* Header */}
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-text font-display mb-2">
+                Welcome to LuminaIQ-AI
+              </h1>
+              <p className="text-text-secondary text-lg">
+                All in one learning software
+              </p>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+            {/* Login Form */}
+            <div className="bg-card-bg rounded-2xl shadow-xl p-8 border border-border">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center space-x-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    <span className="text-red-700 dark:text-red-400 text-sm">{error}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-text mb-2">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User className="h-5 w-5 text-text-secondary" />
+                    </div>
+                    <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-background text-text placeholder-text-secondary"
+                      placeholder="Enter your username"
+                    />
+                  </div>
                 </div>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="Enter your password"
-                />
-              </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-text mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-text-secondary" />
+                    </div>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-background text-text placeholder-text-secondary"
+                      placeholder="Enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-text-secondary hover:text-text transition-colors" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-text-secondary hover:text-text transition-colors" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full btn-primary py-3 px-4 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Logging in...</span>
+                    </div>
+                  ) : (
+                    'Login'
+                  )}
+                </button>
+
+                {/* Forgot Password Link */}
+                <div className="text-center">
+                  <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors">
+                    Forgot Password?
+                  </a>
+                </div>
+              </form>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-600 mb-2 font-medium">Demo Credentials:</p>
-            <div className="text-sm text-gray-700 space-y-1">
-              <p><span className="font-medium">Username:</span> vsbec</p>
-              <p><span className="font-medium">Password:</span> vsbec</p>
+            {/* Sign up option */}
+            <div className="text-center mt-8">
+              <p className="text-text-secondary">
+                Don't have an account?{' '}
+                <a href="#" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                  Sign up
+                </a>
+              </p>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-sm text-gray-500">
-            Upload your PDF documents and start learning with AI assistance
-          </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }

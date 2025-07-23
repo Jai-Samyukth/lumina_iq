@@ -12,7 +12,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (isAuthenticated) {
-        router.push('/upload');
+        router.push('/about');
       } else {
         router.push('/login');
       }
@@ -26,7 +26,7 @@ export default function Home() {
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <BookOpen className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">LearnAI</h1>
+          <h1 className="text-2xl font-bold text-text mb-2">LuminaIQ-AI</h1>
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
         </div>
       </div>

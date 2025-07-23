@@ -1,0 +1,17 @@
+{
+  "title": "Sample Book",
+  "author": "Sample Author",
+  "content": "# Sample Book\nBy Sample Author\n\nThis is a sample book content for \"Sample Book\". In a real implementation, this would contain the actual book text extracted from PDF files or other sources.\n\n## Chapter 1: Introduction\nThis book covers various topics related to the subject matter. The content would be extracted from the actual PDF file if available.\n\n## Chapter 2: Main Content\nHere you would find the detailed content of the book, including:\n- Key concepts and ideas\n- Examples and case studies\n- Practical applications\n- Important insights\n\n## Chapter 3: Conclusion\nThe book concludes with important takeaways and recommendations for further reading.\n\nThis is a demonstration of how the book content would be cached and used for AI interactions.",
+  "text_length": 748,
+  "cached_at": "2025-07-23T16:19:55.270508",
+  "source": "mock_content",
+  "metadata": {
+    "title": "Sample Book",
+    "author": "Sample Author",
+    "pages": 10,
+    "file_size": 748,
+    "subject": "General",
+    "creator": "LuminaIQ-AI",
+    "producer": "Book Service"
+  }
+}

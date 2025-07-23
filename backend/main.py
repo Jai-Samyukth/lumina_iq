@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
-from routes import auth, pdf, chat
+from routes import auth, pdf, chat, book
 
 app = FastAPI(title="Learning App API", version="1.0.0")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(pdf.router)
 app.include_router(chat.router)
+app.include_router(book.router)
 
 # Health check endpoint
 @app.get("/")

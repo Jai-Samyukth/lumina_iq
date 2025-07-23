@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBook } from '@/contexts/BookContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -48,36 +49,22 @@ export default function QAPage() {
   const [questionCount, setQuestionCount] = useState(25);
   
   const { logout, user } = useAuth();
+  const { selectedBook } = useBook();
   const router = useRouter();
 
   useEffect(() => {
-    loadPDFInfo();
+    // No need to load PDF info - we use book context instead
+    setInitialLoading(false);
   }, []);
 
-  const loadPDFInfo = async () => {
-    try {
-      console.log('Loading PDF info...');
-      const info = await pdfApi.getPDFInfo();
-      console.log('PDF info loaded:', info);
-      setPdfInfo(info);
-      // Don't automatically generate questions - wait for user to click
-    } catch (error) {
-      console.error('Error loading PDF info:', error);
-      // Show error message instead of redirecting immediately
-      alert('No PDF selected. Please select a PDF first.');
-      router.push('/upload');
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-
   const generateChapterQuestions = async (topic?: string) => {
-    if (!pdfInfo) return;
+    if (!selectedBook && !pdfInfo) return;
 
     setGeneratingQuestions(true);
     try {
       const topicToUse = topic || questionTopic.trim();
-      console.log('Starting question generation for:', pdfInfo.filename, 'Topic:', topicToUse);
+      const documentName = selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown Document';
+      console.log('Starting question generation for:', documentName, 'Topic:', topicToUse);
 
       // Use the dedicated question generation endpoint that includes full PDF content
       const response = await chatApi.generateQuestions(topicToUse, questionCount);
@@ -107,7 +94,7 @@ export default function QAPage() {
             // Create a single chapter with all questions
             const generatedChapters: Chapter[] = [{
               id: 'main-questions',
-              title: `Questions for: ${pdfInfo?.filename}${topicToUse ? ` - Topic: ${topicToUse}` : ''}`,
+              title: `Questions for: ${documentName}${topicToUse ? ` - Topic: ${topicToUse}` : ''}`,
               questions: parsedData.questions.map((q: string, qIndex: number) => ({
                 id: `q-${qIndex}`,
                 question: q,
@@ -167,7 +154,7 @@ export default function QAPage() {
             // Create a single chapter with all questions
             const generatedChapters: Chapter[] = [{
               id: 'main-questions',
-              title: `Questions for: ${pdfInfo?.filename}${questionTopic.trim() ? ` - Topic: ${questionTopic.trim()}` : ''}`,
+              title: `Questions for: ${selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown Document'}${questionTopic.trim() ? ` - Topic: ${questionTopic.trim()}` : ''}`,
               questions: parsedData.questions.map((q: string, qIndex: number) => ({
                 id: `q-${qIndex}`,
                 question: q,
@@ -248,7 +235,8 @@ export default function QAPage() {
     ));
 
     try {
-      const response = await chatApi.sendMessage(`You are an educational AI assistant. Based on the FULL content of the document "${pdfInfo?.filename}", please provide a comprehensive and detailed answer to this question:
+      const documentName = selectedBook ? selectedBook.title : pdfInfo?.filename || 'the selected document';
+      const response = await chatApi.sendMessage(`You are an educational AI assistant. Based on the FULL content of the document "${documentName}", please provide a comprehensive and detailed answer to this question:
 
 QUESTION: "${question.question}"
 
@@ -341,76 +329,24 @@ Please provide a thorough, well-structured answer that helps the user learn from
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex justify-between items-center py-3">
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-3 rounded-xl shadow-lg">
-                <Brain className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Q&A Learning
-                </h1>
-                {pdfInfo && (
-                  <p className="text-sm text-slate-600 font-medium">{pdfInfo.filename}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center space-x-6">
-              <button
-                onClick={() => router.push('/answer-questions')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <Brain className="h-4 w-4" />
-                <span className="text-sm font-medium">Answer Quiz</span>
-              </button>
-              <button
-                onClick={() => router.push('/notes')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <StickyNote className="h-4 w-4" />
-                <span className="text-sm font-medium">Notes</span>
-              </button>
-              <button
-                onClick={() => router.push('/chat')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-sm font-medium">Chat</span>
-              </button>
-              <button
-                onClick={() => router.push('/upload')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <UploadIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">New PDF</span>
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-slate-700">{user?.username}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="text-sm font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Main Content */}
-      <div className="flex-1 flex w-full">
-        {/* Q&A Area */}
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 chat-scroll">
+      <div className="flex-1 p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-text font-display mb-2">
+              Q&A Learning
+            </h1>
+            {selectedBook ? (
+              <p className="text-text-secondary">Generate questions and answers for "{selectedBook.title}"</p>
+            ) : pdfInfo ? (
+              <p className="text-text-secondary">Generate questions and answers for "{pdfInfo.filename}"</p>
+            ) : (
+              <p className="text-text-secondary">Select a book to start generating questions and answers</p>
+            )}
+          </div>
+          {/* Q&A Content */}
+          <div className="space-y-6">
             {generatingQuestions ? (
               <div className="text-center py-12">
                 <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse">
@@ -420,7 +356,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
                   Generating Questions...
                 </h3>
                 <p className="text-slate-600 max-w-md mx-auto leading-relaxed">
-                  AI is analyzing your document "{pdfInfo?.filename}" and creating 25 comprehensive questions{questionTopic.trim() ? ` focused on "${questionTopic.trim()}"` : ' based on the entire content'}.
+                  AI is analyzing your document "{selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown Document'}" and creating 25 comprehensive questions{questionTopic.trim() ? ` focused on "${questionTopic.trim()}"` : ' based on the entire content'}.
                 </p>
                 <div className="mt-4 text-sm text-slate-500">
                   This may take 30-60 seconds...
@@ -435,7 +371,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
                   Ready to Generate Questions
                 </h3>
                 <p className="text-slate-600 max-w-md mx-auto leading-relaxed mb-6">
-                  Your document "{pdfInfo?.filename}" is loaded and ready. You can generate questions for the entire document or focus on a specific topic.
+                  Your document "{selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown Document'}" is loaded and ready. You can generate questions for the entire document or focus on a specific topic.
                 </p>
 
                 {/* Topic Input Box */}
@@ -637,7 +573,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
         </div>
 
         {/* Sidebar */}
-        {pdfInfo && (
+        {(selectedBook || pdfInfo) && (
           <div className="w-80 bg-white/60 backdrop-blur-sm border-l border-white/20 p-6 overflow-y-auto">
             <div className="space-y-6">
               <div>
@@ -647,23 +583,47 @@ Please provide a thorough, well-structured answer that helps the user learn from
                 </h3>
                 <div className="space-y-3">
                   <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filename</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1 break-words">{pdfInfo.filename}</p>
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      {selectedBook ? 'Book Title' : 'Filename'}
+                    </label>
+                    <p className="text-sm font-medium text-slate-800 mt-1 break-words">
+                      {selectedBook ? selectedBook.title : pdfInfo?.filename || 'Unknown'}
+                    </p>
                   </div>
+
+                  {selectedBook && (
+                    <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Author</label>
+                      <p className="text-sm font-medium text-slate-800 mt-1">{selectedBook.author}</p>
+                    </div>
+                  )}
 
                   <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">File Size</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{formatFileSize(pdfInfo.metadata?.file_size || 0)}</p>
+                    <p className="text-sm font-medium text-slate-800 mt-1">
+                      {formatFileSize(
+                        selectedBook ? (selectedBook.metadata?.file_size || 0) : (pdfInfo?.metadata?.file_size || 0)
+                      )}
+                    </p>
                   </div>
 
                   <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pages</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{pdfInfo.metadata?.pages || 'Unknown'}</p>
+                    <p className="text-sm font-medium text-slate-800 mt-1">
+                      {selectedBook ?
+                        (selectedBook.metadata?.pages || 10) :
+                        (pdfInfo?.metadata?.pages || 'Unknown')
+                      }
+                    </p>
                   </div>
 
                   <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Selected Date</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{formatDate(pdfInfo.selected_at || 'Unknown')}</p>
+                    <p className="text-sm font-medium text-slate-800 mt-1">
+                      {formatDate(
+                        selectedBook ? (selectedBook.selected_at || 'Unknown') : (pdfInfo?.selected_at || 'Unknown')
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>

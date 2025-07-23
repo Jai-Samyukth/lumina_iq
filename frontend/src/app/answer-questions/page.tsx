@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBook } from '@/contexts/BookContext';
 import { 
   chatApi, 
   pdfApi, 
@@ -67,6 +68,7 @@ export default function AnswerQuestionsPage() {
   const [quizResults, setQuizResults] = useState<QuizSubmissionResponse | null>(null);
   
   const { logout, user } = useAuth();
+  const { selectedBook } = useBook();
   const router = useRouter();
 
   useEffect(() => {
@@ -79,7 +81,8 @@ export default function AnswerQuestionsPage() {
       setPdfInfo(info);
     } catch (error) {
       console.error('Failed to load PDF info:', error);
-      router.push('/upload');
+      // Don't redirect, just continue with book selection mode
+      setPdfInfo(null);
     } finally {
       setInitialLoading(false);
     }
@@ -252,19 +255,13 @@ export default function AnswerQuestionsPage() {
     );
   }
 
-  if (!pdfInfo) {
+  if (!pdfInfo && !selectedBook) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">No PDF Selected</h2>
-          <p className="text-slate-600 mb-4">Please select a PDF document first.</p>
-          <button
-            onClick={() => router.push('/upload')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Select PDF
-          </button>
+          <AlertCircle className="h-16 w-16 text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-text mb-2">No Book Selected</h2>
+          <p className="text-text-secondary mb-4">Please select a book using the floating button to start the quiz.</p>
         </div>
       </div>
     );
