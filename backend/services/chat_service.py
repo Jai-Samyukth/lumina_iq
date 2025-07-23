@@ -3,7 +3,15 @@ from datetime import datetime
 from fastapi import HTTPException
 from config.settings import settings
 from utils.storage import pdf_contexts, chat_histories
-from models.chat import ChatMessage, ChatResponse
+from models.chat import (
+    ChatMessage,
+    ChatResponse,
+    AnswerEvaluationRequest,
+    AnswerEvaluationResponse,
+    QuizSubmissionRequest,
+    QuizSubmissionResponse,
+    QuizAnswer
+)
 
 # Configure Gemini AI
 genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -203,3 +211,258 @@ class ChatService:
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Failed to generate questions: {str(e)}")
+
+    @staticmethod
+    async def evaluate_answer(request: AnswerEvaluationRequest, token: str) -> AnswerEvaluationResponse:
+        """Evaluate a single user answer using AI"""
+        if token not in pdf_contexts:
+            raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+
+        pdf_context = pdf_contexts[token]
+
+        # Get evaluation level settings
+        evaluation_level = request.evaluation_level or "medium"
+
+        # Define evaluation criteria based on level
+        if evaluation_level == "easy":
+            criteria_text = """
+        EVALUATION LEVEL: EASY (Lenient)
+        - Focus on basic understanding and effort
+        - Give credit for partial answers and good attempts
+        - Be encouraging and supportive in feedback
+
+        SCORING SCALE (0-10):
+        - 8-10: Shows basic understanding, good effort
+        - 6-7: Partially correct, some understanding shown
+        - 4-5: Minimal understanding but attempted
+        - 2-3: Little understanding but some effort
+        - 0-1: No answer or completely off-topic"""
+        elif evaluation_level == "strict":
+            criteria_text = """
+        EVALUATION LEVEL: STRICT (Rigorous)
+        - Require precise, detailed, and comprehensive answers
+        - Expect specific examples and thorough explanations
+        - Be critical of incomplete or vague responses
+
+        SCORING SCALE (0-10):
+        - 9-10: Exceptional - Precise, comprehensive, with specific examples
+        - 7-8: Very Good - Accurate and detailed, minor gaps acceptable
+        - 5-6: Adequate - Correct but lacks depth or detail
+        - 3-4: Below Standard - Significant gaps or inaccuracies
+        - 1-2: Poor - Major errors or very incomplete
+        - 0: No answer or completely wrong"""
+        else:  # medium
+            criteria_text = """
+        EVALUATION LEVEL: MEDIUM (Balanced)
+        - Expect reasonable understanding and adequate detail
+        - Balance between being supportive and maintaining standards
+        - Look for key concepts and main points
+
+        SCORING SCALE (0-10):
+        - 9-10: Excellent - Accurate, complete, demonstrates deep understanding
+        - 7-8: Good - Mostly accurate, covers main points, good understanding
+        - 5-6: Satisfactory - Partially correct, basic understanding shown
+        - 3-4: Needs Improvement - Some correct elements but significant gaps
+        - 1-2: Poor - Mostly incorrect or irrelevant
+        - 0: No answer or completely wrong"""
+
+        # Prepare context for evaluation
+        evaluation_context = f"""
+        You are an expert educational evaluator. Your task is to evaluate a student's answer to a question based on the provided document content.
+
+        Document: {pdf_context['filename']}
+        Document Content: {pdf_context['content'][:20000]}
+
+        Question: {request.question}
+        Student's Answer: {request.user_answer}
+
+        EVALUATION CRITERIA:
+        1. Accuracy: How correct is the answer based on the document content?
+        2. Completeness: Does the answer cover all important aspects?
+        3. Understanding: Does the student demonstrate clear understanding?
+        4. Relevance: Is the answer relevant to the question asked?
+
+        {criteria_text}
+
+        Please provide your evaluation in the following JSON format:
+        {{
+            "score": [0-10 integer],
+            "feedback": "[Detailed feedback explaining the score, highlighting what was correct and what was missing]",
+            "suggestions": "[Specific suggestions for improvement]",
+            "correct_answer_hint": "[Brief hint about the correct answer without giving it away completely]"
+        }}
+
+        Be constructive and encouraging in your feedback while being honest about areas for improvement.
+        """
+
+        try:
+            response = model.generate_content(evaluation_context)
+            ai_response = response.text
+
+            # Try to extract JSON from the response
+            import json
+            import re
+
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
+            if json_match:
+                try:
+                    evaluation_data = json.loads(json_match.group())
+
+                    return AnswerEvaluationResponse(
+                        question_id=request.question_id,
+                        score=min(max(evaluation_data.get('score', 0), 0), 10),  # Ensure score is 0-10
+                        feedback=evaluation_data.get('feedback', 'No feedback provided'),
+                        suggestions=evaluation_data.get('suggestions', 'No suggestions provided'),
+                        correct_answer_hint=evaluation_data.get('correct_answer_hint')
+                    )
+                except json.JSONDecodeError:
+                    pass
+
+            # Fallback if JSON parsing fails
+            return AnswerEvaluationResponse(
+                question_id=request.question_id,
+                score=5,  # Default middle score
+                feedback=ai_response,
+                suggestions="Please review the document content for more accurate information.",
+                correct_answer_hint="Refer to the relevant sections in the document."
+            )
+
+        except Exception as e:
+            print(f"Error evaluating answer: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to evaluate answer: {str(e)}")
+
+    @staticmethod
+    async def evaluate_quiz(request: QuizSubmissionRequest, token: str) -> QuizSubmissionResponse:
+        """Evaluate a complete quiz submission"""
+        if token not in pdf_contexts:
+            raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+
+        pdf_context = pdf_contexts[token]
+
+        # Evaluate each answer individually
+        individual_results = []
+        total_score = 0
+
+        for answer in request.answers:
+            eval_request = AnswerEvaluationRequest(
+                question=answer.question,
+                user_answer=answer.user_answer,
+                question_id=answer.question_id,
+                evaluation_level=request.evaluation_level
+            )
+
+            result = await ChatService.evaluate_answer(eval_request, token)
+            individual_results.append(result)
+            total_score += result.score
+
+        # Calculate overall metrics
+        max_possible_score = len(request.answers) * 10
+        percentage = (total_score / max_possible_score) * 100 if max_possible_score > 0 else 0
+
+        # Determine grade
+        if percentage >= 90:
+            grade = "A"
+        elif percentage >= 80:
+            grade = "B"
+        elif percentage >= 70:
+            grade = "C"
+        elif percentage >= 60:
+            grade = "D"
+        else:
+            grade = "F"
+
+        # Generate overall feedback using AI
+        overall_context = f"""
+        You are an educational AI providing comprehensive feedback on a student's quiz performance.
+
+        Document: {pdf_context['filename']}
+        Topic: {request.topic or 'General'}
+
+        Quiz Results:
+        - Total Score: {total_score}/{max_possible_score} ({percentage:.1f}%)
+        - Grade: {grade}
+        - Number of Questions: {len(request.answers)}
+
+        Individual Question Performance:
+        """
+
+        for i, (answer, result) in enumerate(zip(request.answers, individual_results), 1):
+            overall_context += f"""
+        Question {i}: {answer.question}
+        Student Answer: {answer.user_answer}
+        Score: {result.score}/10
+        """
+
+        overall_context += f"""
+
+        Based on this performance, provide:
+        1. Overall feedback (2-3 sentences about the student's performance)
+        2. Study suggestions (3-4 specific recommendations)
+        3. Strengths (2-3 areas where the student performed well)
+        4. Areas for improvement (2-3 specific areas needing work)
+
+        Provide your response in JSON format:
+        {{
+            "overall_feedback": "[Overall assessment of performance]",
+            "study_suggestions": ["suggestion1", "suggestion2", "suggestion3"],
+            "strengths": ["strength1", "strength2"],
+            "areas_for_improvement": ["area1", "area2", "area3"]
+        }}
+
+        Be encouraging and constructive while providing actionable feedback.
+        """
+
+        try:
+            response = model.generate_content(overall_context)
+            ai_response = response.text
+
+            # Parse AI response
+            import json
+            import re
+
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
+            if json_match:
+                try:
+                    feedback_data = json.loads(json_match.group())
+
+                    return QuizSubmissionResponse(
+                        overall_score=total_score,
+                        max_score=max_possible_score,
+                        percentage=round(percentage, 1),
+                        grade=grade,
+                        individual_results=individual_results,
+                        overall_feedback=feedback_data.get('overall_feedback', f'You scored {total_score}/{max_possible_score} ({percentage:.1f}%)'),
+                        study_suggestions=feedback_data.get('study_suggestions', ['Review the document content', 'Practice more questions']),
+                        strengths=feedback_data.get('strengths', ['Attempted all questions']),
+                        areas_for_improvement=feedback_data.get('areas_for_improvement', ['Focus on accuracy', 'Provide more detailed answers'])
+                    )
+                except json.JSONDecodeError:
+                    pass
+
+            # Fallback response
+            return QuizSubmissionResponse(
+                overall_score=total_score,
+                max_score=max_possible_score,
+                percentage=round(percentage, 1),
+                grade=grade,
+                individual_results=individual_results,
+                overall_feedback=f'You scored {total_score}/{max_possible_score} ({percentage:.1f}%). {"Great job!" if percentage >= 80 else "Keep practicing to improve your understanding."}',
+                study_suggestions=['Review the document content thoroughly', 'Focus on key concepts and definitions', 'Practice explaining concepts in your own words'],
+                strengths=['Completed all questions', 'Showed effort in answering'],
+                areas_for_improvement=['Accuracy of responses', 'Depth of understanding', 'Use of specific examples from the text']
+            )
+
+        except Exception as e:
+            print(f"Error generating overall feedback: {str(e)}")
+            # Return basic response without AI-generated feedback
+            return QuizSubmissionResponse(
+                overall_score=total_score,
+                max_score=max_possible_score,
+                percentage=round(percentage, 1),
+                grade=grade,
+                individual_results=individual_results,
+                overall_feedback=f'Quiz completed. Score: {total_score}/{max_possible_score} ({percentage:.1f}%)',
+                study_suggestions=['Review the document content', 'Practice more questions'],
+                strengths=['Completed the quiz'],
+                areas_for_improvement=['Continue studying the material']
+            )

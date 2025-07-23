@@ -44,6 +44,46 @@ export interface ChatHistoryItem {
   timestamp: string;
 }
 
+export interface AnswerEvaluationRequest {
+  question: string;
+  user_answer: string;
+  question_id?: string;
+  evaluation_level?: 'easy' | 'medium' | 'strict';
+}
+
+export interface AnswerEvaluationResponse {
+  question_id?: string;
+  score: number;
+  max_score: number;
+  feedback: string;
+  suggestions: string;
+  correct_answer_hint?: string;
+}
+
+export interface QuizAnswer {
+  question_id: string;
+  question: string;
+  user_answer: string;
+}
+
+export interface QuizSubmissionRequest {
+  answers: QuizAnswer[];
+  topic?: string;
+  evaluation_level?: 'easy' | 'medium' | 'strict';
+}
+
+export interface QuizSubmissionResponse {
+  overall_score: number;
+  max_score: number;
+  percentage: number;
+  grade: string;
+  individual_results: AnswerEvaluationResponse[];
+  overall_feedback: string;
+  study_suggestions: string[];
+  strengths: string[];
+  areas_for_improvement: string[];
+}
+
 export interface PDFMetadata {
   title: string;
   author: string;
@@ -120,6 +160,16 @@ export const chatApi = {
 
   async generateQuestions(topic?: string, count?: number): Promise<ChatResponse> {
     const response = await api.post('/chat/generate-questions', { topic, count });
+    return response.data;
+  },
+
+  async evaluateAnswer(request: AnswerEvaluationRequest): Promise<AnswerEvaluationResponse> {
+    const response = await api.post('/chat/evaluate-answer', request);
+    return response.data;
+  },
+
+  async evaluateQuiz(request: QuizSubmissionRequest): Promise<QuizSubmissionResponse> {
+    const response = await api.post('/chat/evaluate-quiz', request);
     return response.data;
   },
 };

@@ -21,7 +21,9 @@ import {
   Sparkles,
   Copy,
   Check,
-  HelpCircle
+  HelpCircle,
+  Brain,
+  StickyNote
 } from 'lucide-react';
 
 export default function ChatPage() {
@@ -163,6 +165,20 @@ export default function ChatPage() {
                 <span className="text-sm font-medium">Q&A</span>
               </button>
               <button
+                onClick={() => router.push('/answer-questions')}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                <Brain className="h-4 w-4" />
+                <span className="text-sm font-medium">Answer Quiz</span>
+              </button>
+              <button
+                onClick={() => router.push('/notes')}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                <StickyNote className="h-4 w-4" />
+                <span className="text-sm font-medium">Notes</span>
+              </button>
+              <button
                 onClick={() => router.push('/upload')}
                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
@@ -235,9 +251,10 @@ export default function ChatPage() {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            code: ({ node, inline, className, children, ...props }) => {
+                            code: ({ className, children, ...props }) => {
                               const match = /language-(\w+)/.exec(className || '');
-                              return !inline ? (
+                              const isInline = 'inline' in props;
+                              return !isInline ? (
                                 <div className="relative my-3">
                                   <pre className="bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto text-sm">
                                     <code className={className} {...props}>
@@ -438,7 +455,7 @@ export default function ChatPage() {
                   <Calendar className="h-3 w-3" />
                   <span>Selected</span>
                 </label>
-                <p className="text-xs text-slate-800 font-medium mt-1">{formatDate(pdfInfo.selected_at || pdfInfo.uploaded_at)}</p>
+                <p className="text-xs text-slate-800 font-medium mt-1">{formatDate(pdfInfo.selected_at || pdfInfo.uploaded_at || 'Unknown')}</p>
               </div>
 
               <div className="bg-white/80 rounded-lg p-3 shadow-sm">

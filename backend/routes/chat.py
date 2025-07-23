@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
-from models.chat import ChatMessage, ChatResponse
+from models.chat import (
+    ChatMessage,
+    ChatResponse,
+    AnswerEvaluationRequest,
+    AnswerEvaluationResponse,
+    QuizSubmissionRequest,
+    QuizSubmissionResponse
+)
 from services.chat_service import ChatService
 from utils.security import verify_token
 
@@ -36,3 +43,19 @@ async def generate_questions(
 ):
     """Generate Q&A questions from the selected PDF content, optionally focused on a specific topic"""
     return await ChatService.generate_questions(token, request.topic, request.count)
+
+@router.post("/evaluate-answer", response_model=AnswerEvaluationResponse)
+async def evaluate_answer(
+    request: AnswerEvaluationRequest,
+    token: str = Depends(verify_token)
+):
+    """Evaluate a single user answer using AI"""
+    return await ChatService.evaluate_answer(request, token)
+
+@router.post("/evaluate-quiz", response_model=QuizSubmissionResponse)
+async def evaluate_quiz(
+    request: QuizSubmissionRequest,
+    token: str = Depends(verify_token)
+):
+    """Evaluate a complete quiz submission with overall feedback"""
+    return await ChatService.evaluate_quiz(request, token)
