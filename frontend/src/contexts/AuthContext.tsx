@@ -19,13 +19,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     checkAuth();
+
+    // Refresh token cookie every 5 minutes to prevent middleware redirects
+    const interval = setInterval(() => {
+      if (authService.isAuthenticated()) {
+        authService.refreshTokenCookie();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
   }, []);
 
   const checkAuth = async () => {
     try {
       const userData = await authService.verifyAuth();
       setUser(userData);
+      // Refresh token cookie on successful auth check
+      if (userData) {
+        authService.refreshTokenCookie();
+      }
     } catch (error) {
+      console.error('Auth check failed:', error);
       setUser(null);
     } finally {
       setLoading(false);

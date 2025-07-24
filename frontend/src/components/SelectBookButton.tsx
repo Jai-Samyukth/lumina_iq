@@ -98,12 +98,12 @@ export default function SelectBookButton() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 group floating-button"
+        className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-white px-6 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 group floating-button"
         aria-label="Select Book"
       >
-        <div className="flex items-center space-x-2">
-          <Plus className="h-6 w-6" />
-          <span className="hidden group-hover:block text-sm font-medium whitespace-nowrap">
+        <div className="flex items-center space-x-3">
+          <Plus className="h-5 w-5" />
+          <span className="text-sm font-medium whitespace-nowrap">
             Select Book
           </span>
         </div>

@@ -65,7 +65,13 @@ class AuthService {
 
   constructor() {
     if (typeof window !== 'undefined') {
+      // Try to get token from localStorage first, then cookie
       this.token = localStorage.getItem('auth_token') || getCookie('auth_token');
+
+      // If we have a token in localStorage but not in cookie, set the cookie
+      if (this.token && !getCookie('auth_token')) {
+        setCookie('auth_token', this.token, 7); // Set for 7 days
+      }
     }
   }
 
@@ -77,7 +83,7 @@ class AuthService {
       this.token = data.access_token;
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', data.access_token);
-        setCookie('auth_token', data.access_token, 1); // Store in cookie for middleware
+        setCookie('auth_token', data.access_token, 7); // Store in cookie for 7 days for middleware
       }
 
       return data;
@@ -100,6 +106,8 @@ class AuthService {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         deleteCookie('auth_token'); // Remove from cookie as well
+        // Clear book selection as well on logout
+        localStorage.removeItem('selectedBook');
       }
     }
   }
@@ -113,10 +121,13 @@ class AuthService {
       });
       return response.data;
     } catch (error) {
-      this.token = null;
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        deleteCookie('auth_token'); // Remove from cookie as well
+      // Only clear tokens if it's an authentication error (401)
+      if ((error as any)?.response?.status === 401) {
+        this.token = null;
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+          deleteCookie('auth_token'); // Remove from cookie as well
+        }
       }
       return null;
     }
@@ -128,6 +139,13 @@ class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.token;
+  }
+
+  // Refresh token in cookie to prevent middleware redirects
+  refreshTokenCookie(): void {
+    if (this.token && typeof window !== 'undefined') {
+      setCookie('auth_token', this.token, 7);
+    }
   }
 }
 

@@ -24,7 +24,10 @@ export function middleware(request: NextRequest) {
 
   // If trying to access a protected route without a token
   if (!isPublicRoute && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Only redirect if it's not an API call or static resource
+    if (!pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   // If trying to access login page while authenticated
