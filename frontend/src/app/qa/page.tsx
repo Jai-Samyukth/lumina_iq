@@ -20,7 +20,13 @@ import {
   Sparkles,
   Brain,
   MessageSquare,
-  StickyNote
+  StickyNote,
+  Menu,
+  Settings,
+  Target,
+  CheckCircle2,
+  Clock,
+  Zap
 } from 'lucide-react';
 
 interface Question {
@@ -46,7 +52,8 @@ export default function QAPage() {
   const [testingAI, setTestingAI] = useState(false);
   const [questionTopic, setQuestionTopic] = useState('');
   const [questionCount, setQuestionCount] = useState(25);
-  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const { logout, user } = useAuth();
   const router = useRouter();
 
@@ -331,243 +338,439 @@ Please provide a thorough, well-structured answer that helps the user learn from
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFE8D6' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading Q&A...</p>
+          <div className="p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse"
+               style={{ backgroundColor: '#CB997E' }}>
+            <Sparkles className="h-8 w-8 text-white" />
+          </div>
+          <h3 className="text-xl font-bold mb-2" style={{ color: '#6B705C' }}>Loading Q&A Session</h3>
+          <p style={{ color: '#A5A58D' }}>Preparing your learning environment...</p>
         </div>
       </div>
     );
   }
 
+  const navigationItems = [
+    { icon: MessageSquare, label: 'Chat', path: '/chat' },
+    { icon: HelpCircle, label: 'Q&A', path: '/qa', active: true },
+    { icon: Brain, label: 'Answer Quiz', path: '/answer-questions' },
+    { icon: StickyNote, label: 'Notes', path: '/notes' },
+    { icon: UploadIcon, label: 'New PDF', path: '/upload' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex justify-between items-center py-3">
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-3 rounded-xl shadow-lg">
-                <Brain className="h-6 w-6 text-white" />
+    <div className="h-screen flex" style={{ backgroundColor: '#FFE8D6' }}>
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}
+           style={{ backgroundColor: '#DDBEA9' }}>
+        <div className="flex flex-col h-full">
+          {/* Logo Section */}
+          <div className="p-6 border-b" style={{ borderColor: '#B7B7A4' }}>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-xl" style={{ backgroundColor: '#CB997E' }}>
+                <BookOpen className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Q&A Learning
-                </h1>
-                {pdfInfo && (
-                  <p className="text-sm text-slate-600 font-medium">{pdfInfo.filename}</p>
-                )}
+                <h1 className="text-xl font-bold" style={{ color: '#6B705C' }}>LuminalQ</h1>
+                <p className="text-xs font-medium" style={{ color: '#A5A58D' }}>AI Learning Assistant</p>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
+            {/* Mobile Close Button */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-black hover:bg-opacity-10 transition-colors"
+            >
+              <Menu className="h-5 w-5" style={{ color: '#6B705C' }} />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            {navigationItems.map((item) => (
               <button
-                onClick={() => router.push('/answer-questions')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                key={item.path}
+                onClick={() => {
+                  router.push(item.path);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                  item.active
+                    ? 'shadow-lg transform scale-105'
+                    : 'hover:shadow-md hover:transform hover:scale-105'
+                }`}
+                style={{
+                  backgroundColor: item.active ? '#CB997E' : 'transparent',
+                  color: item.active ? 'white' : '#6B705C'
+                }}
+                onMouseEnter={(e) => {
+                  if (!item.active) {
+                    e.currentTarget.style.backgroundColor = 'rgba(203, 153, 126, 0.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!item.active) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
-                <Brain className="h-4 w-4" />
-                <span className="text-sm font-medium">Answer Quiz</span>
+                <item.icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
               </button>
-              <button
-                onClick={() => router.push('/notes')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <StickyNote className="h-4 w-4" />
-                <span className="text-sm font-medium">Notes</span>
-              </button>
-              <button
-                onClick={() => router.push('/chat')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-sm font-medium">Chat</span>
-              </button>
-              <button
-                onClick={() => router.push('/upload')}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <UploadIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">New PDF</span>
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-slate-700">{user?.username}</span>
+            ))}
+          </nav>
+
+          {/* User Section */}
+          <div className="p-4 border-t" style={{ borderColor: '#B7B7A4' }}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#A5A58D' }}>
+                <User className="h-5 w-5 text-white" />
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="text-sm font-medium">Logout</span>
-              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: '#6B705C' }}>
+                  {user?.email}
+                </p>
+                <p className="text-xs" style={{ color: '#A5A58D' }}>Logged in</p>
+              </div>
             </div>
+            <button
+              onClick={logout}
+              className="w-full flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+              style={{ backgroundColor: '#CB997E', color: 'white' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#B8876B';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#CB997E';
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex w-full">
+      <div className="flex-1 flex flex-col lg:flex-row h-full min-h-0">
+        {/* Mobile Header */}
+        <div className="flex-shrink-0 lg:hidden p-4 border-b flex items-center justify-between" style={{ borderColor: '#DDBEA9' }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-black hover:bg-opacity-10 transition-colors"
+          >
+            <Menu className="h-6 w-6" style={{ color: '#6B705C' }} />
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="p-2 rounded-lg" style={{ backgroundColor: '#CB997E' }}>
+              <HelpCircle className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-lg font-bold" style={{ color: '#6B705C' }}>Q&A Learning</h1>
+          </div>
+          <div></div>
+        </div>
+
         {/* Q&A Area */}
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 chat-scroll">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {generatingQuestions ? (
               <div className="text-center py-12">
-                <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse">
+                <div className="p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse"
+                     style={{ backgroundColor: '#CB997E' }}>
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">
+                <h3 className="text-xl font-bold mb-2" style={{ color: '#6B705C' }}>
                   Generating Questions...
                 </h3>
-                <p className="text-slate-600 max-w-md mx-auto leading-relaxed">
-                  AI is analyzing your document "{pdfInfo?.filename}" and creating 25 comprehensive questions{questionTopic.trim() ? ` focused on "${questionTopic.trim()}"` : ' based on the entire content'}.
+                <p className="max-w-md mx-auto leading-relaxed" style={{ color: '#A5A58D' }}>
+                  AI is analyzing your document "{pdfInfo?.filename}" and creating {questionCount} comprehensive questions{questionTopic.trim() ? ` focused on "${questionTopic.trim()}"` : ' based on the entire content'}.
                 </p>
-                <div className="mt-4 text-sm text-slate-500">
+                <div className="mt-4 text-sm" style={{ color: '#B7B7A4' }}>
                   This may take 30-60 seconds...
                 </div>
               </div>
             ) : chapters.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                  <Sparkles className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">
-                  Ready to Generate Questions
-                </h3>
-                <p className="text-slate-600 max-w-md mx-auto leading-relaxed mb-6">
-                  Your document "{pdfInfo?.filename}" is loaded and ready. You can generate questions for the entire document or focus on a specific topic.
-                </p>
-
-                {/* Topic Input Box */}
-                <div className="max-w-md mx-auto mb-6">
-                  <label htmlFor="questionTopic" className="block text-sm font-medium text-slate-700 mb-2 text-left">
-                    Specific Topic (Optional)
-                  </label>
-                  <input
-                    id="questionTopic"
-                    type="text"
-                    value={questionTopic}
-                    onChange={(e) => setQuestionTopic(e.target.value)}
-                    placeholder="e.g., 'machine learning algorithms', 'chapter 3', 'data structures'..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
-                  />
-                  <p className="text-xs text-slate-500 mt-1 text-left">
-                    Leave empty to generate questions about the entire document, or specify a topic to focus on specific content.
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center py-8 mb-8">
+                  <div className="p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg"
+                       style={{ backgroundColor: '#CB997E' }}>
+                    <Sparkles className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2" style={{ color: '#6B705C' }}>
+                    Ready to Generate Questions
+                  </h3>
+                  <p className="max-w-md mx-auto leading-relaxed" style={{ color: '#A5A58D' }}>
+                    Your document "{pdfInfo?.filename}" is loaded and ready. Customize your learning experience below.
                   </p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto mb-6">
-                  <p className="text-sm text-blue-800">
-                    <strong>What you'll get:</strong>
-                  </p>
-                  <ul className="text-sm text-blue-700 text-left mt-2 space-y-1">
-                    <li>• 25 comprehensive questions {questionTopic.trim() ? `focused on "${questionTopic.trim()}"` : 'covering the entire document'}</li>
-                    <li>• Questions about key concepts, definitions, and examples</li>
-                    <li>• Critical thinking questions for deeper understanding</li>
-                    <li>• Click any question to get detailed AI-powered answers</li>
-                  </ul>
+                {/* Enhanced Form */}
+                <div className="rounded-2xl p-8 shadow-lg border-2 mb-8"
+                     style={{ backgroundColor: '#DDBEA9', borderColor: '#B7B7A4' }}>
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    {/* Topic Input */}
+                    <div>
+                      <label htmlFor="questionTopic" className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <Target className="h-4 w-4 inline mr-2" />
+                        Specific Topic (Optional)
+                      </label>
+                      <input
+                        id="questionTopic"
+                        type="text"
+                        value={questionTopic}
+                        onChange={(e) => setQuestionTopic(e.target.value)}
+                        placeholder="e.g., 'machine learning', 'chapter 3', 'data structures'..."
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium"
+                        style={{
+                          backgroundColor: '#FFE8D6',
+                          borderColor: '#B7B7A4',
+                          color: '#6B705C'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#CB997E';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(203, 153, 126, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#B7B7A4';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                      <p className="text-xs mt-2" style={{ color: '#A5A58D' }}>
+                        Leave empty for questions about the entire document
+                      </p>
+                    </div>
+
+                    {/* Question Count */}
+                    <div>
+                      <label htmlFor="questionCount" className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <Hash className="h-4 w-4 inline mr-2" />
+                        Number of Questions
+                      </label>
+                      <select
+                        id="questionCount"
+                        value={questionCount}
+                        onChange={(e) => setQuestionCount(Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium"
+                        style={{
+                          backgroundColor: '#FFE8D6',
+                          borderColor: '#B7B7A4',
+                          color: '#6B705C'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#CB997E';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(203, 153, 126, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#B7B7A4';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      >
+                        <option value={10}>10 Questions</option>
+                        <option value={15}>15 Questions</option>
+                        <option value={20}>20 Questions</option>
+                        <option value={25}>25 Questions</option>
+                        <option value={30}>30 Questions</option>
+                        <option value={40}>40 Questions</option>
+                        <option value={50}>50 Questions</option>
+                      </select>
+                      <p className="text-xs mt-2" style={{ color: '#A5A58D' }}>
+                        More questions = deeper coverage
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Preview Box */}
+                  <div className="rounded-xl p-4 mb-6 border-2"
+                       style={{ backgroundColor: '#FFE8D6', borderColor: '#CB997E' }}>
+                    <p className="text-sm font-semibold mb-2" style={{ color: '#6B705C' }}>
+                      <Zap className="h-4 w-4 inline mr-2" />
+                      What you'll get:
+                    </p>
+                    <ul className="text-sm space-y-1" style={{ color: '#A5A58D' }}>
+                      <li className="flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-2" style={{ color: '#CB997E' }} />
+                        {questionCount} comprehensive questions {questionTopic.trim() ? `focused on "${questionTopic.trim()}"` : 'covering the entire document'}
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-2" style={{ color: '#CB997E' }} />
+                        Questions about key concepts, definitions, and examples
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-2" style={{ color: '#CB997E' }} />
+                        Critical thinking questions for deeper understanding
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-2" style={{ color: '#CB997E' }} />
+                        Click any question to get detailed AI-powered answers
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Generate Button */}
+                  <button
+                    onClick={() => generateChapterQuestions()}
+                    className="w-full px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-3"
+                    style={{ backgroundColor: '#CB997E', color: 'white' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#B8876B';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#CB997E';
+                    }}
+                  >
+                    <Sparkles className="h-5 w-5" />
+                    <span>Generate {questionCount} Questions{questionTopic.trim() ? ` about "${questionTopic.trim()}"` : ''}</span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => generateChapterQuestions()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  <Sparkles className="h-5 w-5 inline mr-2" />
-                  Generate Questions{questionTopic.trim() ? ` about "${questionTopic.trim()}"` : ''}
-                </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {chapters.map((chapter) => (
-                  <div key={chapter.id} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20">
+                  <div key={chapter.id} className="rounded-2xl shadow-lg border-2 overflow-hidden transition-all duration-300 hover:shadow-xl"
+                       style={{ backgroundColor: '#DDBEA9', borderColor: '#B7B7A4' }}>
                     <button
                       onClick={() => toggleChapter(chapter.id)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-white/60 transition-colors rounded-xl"
+                      className="w-full flex items-center justify-between p-6 transition-all duration-200"
+                      style={{
+                        backgroundColor: chapter.expanded ? '#CB997E' : 'transparent',
+                        color: chapter.expanded ? 'white' : '#6B705C'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!chapter.expanded) {
+                          e.currentTarget.style.backgroundColor = 'rgba(203, 153, 126, 0.1)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!chapter.expanded) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-2 rounded-lg">
-                          <BookOpen className="h-4 w-4 text-white" />
+                      <div className="flex items-center space-x-4">
+                        <div className="p-3 rounded-xl"
+                             style={{ backgroundColor: chapter.expanded ? 'rgba(255, 255, 255, 0.2)' : '#CB997E' }}>
+                          <BookOpen className="h-5 w-5 text-white" />
                         </div>
-                        <h3 className="text-lg font-semibold text-slate-800">{chapter.title}</h3>
-                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          {chapter.questions.length} questions
+                        <div className="text-left">
+                          <h3 className="text-lg font-bold">{chapter.title}</h3>
+                          <p className="text-sm opacity-80">
+                            {chapter.questions.length} questions available
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: chapter.expanded ? 'rgba(255, 255, 255, 0.2)' : '#FFE8D6',
+                                color: chapter.expanded ? 'white' : '#6B705C'
+                              }}>
+                          {chapter.questions.length}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         {chapter.loading && (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2"
+                               style={{ borderColor: chapter.expanded ? 'white' : '#CB997E' }}></div>
                         )}
                         {chapter.expanded ? (
-                          <ChevronDown className="h-5 w-5 text-slate-600" />
+                          <ChevronDown className="h-6 w-6" />
                         ) : (
-                          <ChevronRight className="h-5 w-5 text-slate-600" />
+                          <ChevronRight className="h-6 w-6" />
                         )}
                       </div>
                     </button>
 
                     {chapter.expanded && (
-                      <div className="px-4 pb-4 space-y-3">
+                      <div className="p-6 space-y-4" style={{ backgroundColor: '#FFE8D6' }}>
                         {chapter.questions.map((question) => (
-                          <div key={question.id} className="bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
+                          <div key={question.id} className="rounded-xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg"
+                               style={{ backgroundColor: '#DDBEA9', borderColor: '#B7B7A4' }}>
                             <button
                               onClick={() => handleQuestionClick(chapter.id, question.id)}
-                              className="w-full text-left p-4 hover:bg-white/40 transition-colors rounded-lg"
+                              className="w-full text-left p-5 transition-all duration-200"
+                              style={{ backgroundColor: 'transparent' }}
                               disabled={question.loading}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(203, 153, 126, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
                             >
-                              <div className="flex items-start space-x-3">
+                              <div className="flex items-start space-x-4">
                                 <div className="flex-shrink-0 mt-1">
                                   {question.loading ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2"
+                                         style={{ borderColor: '#CB997E' }}></div>
                                   ) : question.answer ? (
-                                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                                         style={{ backgroundColor: '#CB997E' }}>
+                                      <CheckCircle2 className="h-3 w-3 text-white" />
                                     </div>
                                   ) : (
-                                    <HelpCircle className="h-4 w-4 text-blue-500" />
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                                         style={{ backgroundColor: '#A5A58D' }}>
+                                      <HelpCircle className="h-3 w-3 text-white" />
+                                    </div>
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <p className="text-slate-800 font-medium mb-2">{question.question}</p>
+                                  <p className="font-semibold mb-3 leading-relaxed" style={{ color: '#6B705C' }}>
+                                    {question.question}
+                                  </p>
                                   {question.answer && (
-                                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-100">
-                                      <div className="prose prose-sm max-w-none text-slate-700">
+                                    <div className="rounded-xl p-4 border-2"
+                                         style={{ backgroundColor: '#FFE8D6', borderColor: '#CB997E' }}>
+                                      <div className="prose prose-sm max-w-none">
                                         <ReactMarkdown
                                           remarkPlugins={[remarkGfm]}
                                           components={{
                                             h1: ({ children }) => (
-                                              <h1 className="text-lg font-bold text-slate-800 mb-3 mt-4 first:mt-0">
+                                              <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" style={{ color: '#6B705C' }}>
                                                 {children}
                                               </h1>
                                             ),
                                             h2: ({ children }) => (
-                                              <h2 className="text-base font-semibold text-slate-800 mb-2 mt-3">
+                                              <h2 className="text-base font-semibold mb-2 mt-3" style={{ color: '#6B705C' }}>
                                                 {children}
                                               </h2>
                                             ),
                                             h3: ({ children }) => (
-                                              <h3 className="text-sm font-semibold text-slate-700 mb-2 mt-3">
+                                              <h3 className="text-sm font-semibold mb-2 mt-3" style={{ color: '#A5A58D' }}>
                                                 {children}
                                               </h3>
                                             ),
                                             p: ({ children }) => (
-                                              <p className="text-slate-700 leading-relaxed mb-2">
+                                              <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>
                                                 {children}
                                               </p>
                                             ),
                                             ul: ({ children }) => (
-                                              <ul className="list-disc list-inside text-slate-700 space-y-1 mb-2 ml-2">
+                                              <ul className="list-disc list-inside space-y-1 mb-2 ml-2" style={{ color: '#6B705C' }}>
                                                 {children}
                                               </ul>
                                             ),
                                             ol: ({ children }) => (
-                                              <ol className="list-decimal list-inside text-slate-700 space-y-1 mb-2 ml-2">
+                                              <ol className="list-decimal list-inside space-y-1 mb-2 ml-2" style={{ color: '#6B705C' }}>
                                                 {children}
                                               </ol>
                                             ),
                                             li: ({ children }) => (
-                                              <li className="text-slate-700 text-sm">{children}</li>
+                                              <li className="text-sm" style={{ color: '#6B705C' }}>{children}</li>
                                             ),
                                             blockquote: ({ children }) => (
-                                              <blockquote className="border-l-3 border-blue-500 pl-3 italic text-slate-600 bg-blue-50 py-2 rounded-r mb-2">
+                                              <blockquote className="border-l-4 pl-3 italic py-2 rounded-r mb-2"
+                                                          style={{
+                                                            borderColor: '#CB997E',
+                                                            backgroundColor: '#DDBEA9',
+                                                            color: '#A5A58D'
+                                                          }}>
                                                 {children}
                                               </blockquote>
                                             ),
@@ -575,43 +778,48 @@ Please provide a thorough, well-structured answer that helps the user learn from
                                               const isInline = 'inline' in props;
                                               return !isInline ? (
                                                 <div className="relative my-2">
-                                                  <pre className="bg-slate-800 text-slate-100 rounded p-2 overflow-x-auto text-xs">
+                                                  <pre className="rounded p-3 overflow-x-auto text-xs"
+                                                       style={{ backgroundColor: '#6B705C', color: '#FFE8D6' }}>
                                                     <code className={className} {...props}>
                                                       {children}
                                                     </code>
                                                   </pre>
                                                 </div>
                                               ) : (
-                                                <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-xs font-mono" {...props}>
+                                                <code className="px-2 py-1 rounded text-xs font-mono"
+                                                      style={{ backgroundColor: '#B7B7A4', color: '#6B705C' }} {...props}>
                                                   {children}
                                                 </code>
                                               );
                                             },
                                             strong: ({ children }) => (
-                                              <strong className="font-semibold text-slate-800">{children}</strong>
+                                              <strong className="font-semibold" style={{ color: '#6B705C' }}>{children}</strong>
                                             ),
                                             em: ({ children }) => (
-                                              <em className="italic text-slate-700">{children}</em>
+                                              <em className="italic" style={{ color: '#A5A58D' }}>{children}</em>
                                             ),
                                             table: ({ children }) => (
                                               <div className="overflow-x-auto mb-2">
-                                                <table className="min-w-full border border-slate-300 rounded text-xs">
+                                                <table className="min-w-full border rounded text-xs"
+                                                       style={{ borderColor: '#B7B7A4' }}>
                                                   {children}
                                                 </table>
                                               </div>
                                             ),
                                             thead: ({ children }) => (
-                                              <thead className="bg-slate-100">
+                                              <thead style={{ backgroundColor: '#DDBEA9' }}>
                                                 {children}
                                               </thead>
                                             ),
                                             th: ({ children }) => (
-                                              <th className="border border-slate-300 px-2 py-1 text-left font-semibold text-slate-700">
+                                              <th className="border px-2 py-1 text-left font-semibold"
+                                                  style={{ borderColor: '#B7B7A4', color: '#6B705C' }}>
                                                 {children}
                                               </th>
                                             ),
                                             td: ({ children }) => (
-                                              <td className="border border-slate-300 px-2 py-1 text-slate-700">
+                                              <td className="border px-2 py-1"
+                                                  style={{ borderColor: '#B7B7A4', color: '#6B705C' }}>
                                                 {children}
                                               </td>
                                             ),
@@ -636,48 +844,80 @@ Please provide a thorough, well-structured answer that helps the user learn from
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Information Sidebar */}
         {pdfInfo && (
-          <div className="w-80 bg-white/60 backdrop-blur-sm border-l border-white/20 p-6 overflow-y-auto">
+          <div className="hidden lg:block w-80 border-l p-6 overflow-y-auto"
+               style={{ backgroundColor: '#DDBEA9', borderColor: '#B7B7A4' }}>
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                <h3 className="text-lg font-bold mb-4 flex items-center" style={{ color: '#6B705C' }}>
+                  <FileText className="h-5 w-5 mr-2" style={{ color: '#CB997E' }} />
                   Document Info
                 </h3>
                 <div className="space-y-3">
-                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filename</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1 break-words">{pdfInfo.filename}</p>
+                  <div className="rounded-xl p-4 border-2"
+                       style={{ backgroundColor: '#FFE8D6', borderColor: '#B7B7A4' }}>
+                    <label className="text-xs font-bold uppercase tracking-wide" style={{ color: '#A5A58D' }}>
+                      Filename
+                    </label>
+                    <p className="text-sm font-semibold mt-1 break-words" style={{ color: '#6B705C' }}>
+                      {pdfInfo.filename}
+                    </p>
                   </div>
 
-                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">File Size</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{formatFileSize(pdfInfo.metadata?.file_size || 0)}</p>
+                  <div className="rounded-xl p-4 border-2"
+                       style={{ backgroundColor: '#FFE8D6', borderColor: '#B7B7A4' }}>
+                    <label className="text-xs font-bold uppercase tracking-wide" style={{ color: '#A5A58D' }}>
+                      File Size
+                    </label>
+                    <p className="text-sm font-semibold mt-1" style={{ color: '#6B705C' }}>
+                      {formatFileSize(pdfInfo.metadata?.file_size || 0)}
+                    </p>
                   </div>
 
-                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pages</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{pdfInfo.metadata?.pages || 'Unknown'}</p>
+                  <div className="rounded-xl p-4 border-2"
+                       style={{ backgroundColor: '#FFE8D6', borderColor: '#B7B7A4' }}>
+                    <label className="text-xs font-bold uppercase tracking-wide" style={{ color: '#A5A58D' }}>
+                      Pages
+                    </label>
+                    <p className="text-sm font-semibold mt-1" style={{ color: '#6B705C' }}>
+                      {pdfInfo.metadata?.pages || 'Unknown'}
+                    </p>
                   </div>
 
-                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Selected Date</label>
-                    <p className="text-sm font-medium text-slate-800 mt-1">{formatDate(pdfInfo.selected_at || 'Unknown')}</p>
+                  <div className="rounded-xl p-4 border-2"
+                       style={{ backgroundColor: '#FFE8D6', borderColor: '#B7B7A4' }}>
+                    <label className="text-xs font-bold uppercase tracking-wide" style={{ color: '#A5A58D' }}>
+                      Selected Date
+                    </label>
+                    <p className="text-sm font-semibold mt-1" style={{ color: '#6B705C' }}>
+                      {formatDate(pdfInfo.selected_at || 'Unknown')}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                <h3 className="text-lg font-bold mb-4 flex items-center" style={{ color: '#6B705C' }}>
+                  <Settings className="h-5 w-5 mr-2" style={{ color: '#CB997E' }} />
                   Quick Actions
                 </h3>
                 <div className="space-y-3">
                   <button
                     onClick={testAIConnection}
                     disabled={testingAI}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#CB997E', color: 'white' }}
+                    onMouseEnter={(e) => {
+                      if (!testingAI) {
+                        e.currentTarget.style.backgroundColor = '#B8876B';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!testingAI) {
+                        e.currentTarget.style.backgroundColor = '#CB997E';
+                      }
+                    }}
                   >
                     {testingAI ? (
                       <div className="flex items-center justify-center space-x-2">
@@ -685,14 +925,28 @@ Please provide a thorough, well-structured answer that helps the user learn from
                         <span>Testing...</span>
                       </div>
                     ) : (
-                      'Test AI Connection'
+                      <div className="flex items-center justify-center space-x-2">
+                        <Zap className="h-4 w-4" />
+                        <span>Test AI Connection</span>
+                      </div>
                     )}
                   </button>
 
                   <button
                     onClick={() => generateChapterQuestions()}
                     disabled={generatingQuestions}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#A5A58D', color: 'white' }}
+                    onMouseEnter={(e) => {
+                      if (!generatingQuestions) {
+                        e.currentTarget.style.backgroundColor = '#94947A';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!generatingQuestions) {
+                        e.currentTarget.style.backgroundColor = '#A5A58D';
+                      }
+                    }}
                   >
                     {generatingQuestions ? (
                       <div className="flex items-center justify-center space-x-2">
@@ -700,7 +954,10 @@ Please provide a thorough, well-structured answer that helps the user learn from
                         <span>Generating...</span>
                       </div>
                     ) : (
-                      'Regenerate Questions'
+                      <div className="flex items-center justify-center space-x-2">
+                        <Sparkles className="h-4 w-4" />
+                        <span>Regenerate Questions</span>
+                      </div>
                     )}
                   </button>
                 </div>
@@ -708,20 +965,43 @@ Please provide a thorough, well-structured answer that helps the user learn from
 
               {chapters.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <HardDrive className="h-5 w-5 mr-2 text-indigo-600" />
+                  <h3 className="text-lg font-bold mb-4 flex items-center" style={{ color: '#6B705C' }}>
+                    <Target className="h-5 w-5 mr-2" style={{ color: '#CB997E' }} />
                     Statistics
                   </h3>
                   <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-3 text-white">
-                      <label className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Total Chapters</label>
-                      <p className="text-sm font-bold mt-1">{chapters.length}</p>
+                    <div className="rounded-xl p-4 text-white shadow-lg"
+                         style={{ backgroundColor: '#CB997E' }}>
+                      <label className="text-xs font-bold uppercase tracking-wide opacity-90">
+                        Total Chapters
+                      </label>
+                      <p className="text-lg font-bold mt-1">{chapters.length}</p>
                     </div>
 
-                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg p-3 text-white">
-                      <label className="text-xs font-semibold text-purple-100 uppercase tracking-wide">Questions Generated</label>
-                      <p className="text-sm font-bold mt-1">{chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}</p>
-                      <p className="text-xs text-purple-100">across {chapters.length} chapters</p>
+                    <div className="rounded-xl p-4 text-white shadow-lg"
+                         style={{ backgroundColor: '#A5A58D' }}>
+                      <label className="text-xs font-bold uppercase tracking-wide opacity-90">
+                        Questions Generated
+                      </label>
+                      <p className="text-lg font-bold mt-1">
+                        {chapters.reduce((total, chapter) => total + chapter.questions.length, 0)}
+                      </p>
+                      <p className="text-xs opacity-80">across {chapters.length} chapters</p>
+                    </div>
+
+                    <div className="rounded-xl p-4 border-2"
+                         style={{ backgroundColor: '#FFE8D6', borderColor: '#B7B7A4' }}>
+                      <label className="text-xs font-bold uppercase tracking-wide" style={{ color: '#A5A58D' }}>
+                        Answered Questions
+                      </label>
+                      <p className="text-lg font-bold mt-1" style={{ color: '#6B705C' }}>
+                        {chapters.reduce((total, chapter) =>
+                          total + chapter.questions.filter(q => q.answer).length, 0
+                        )}
+                      </p>
+                      <p className="text-xs" style={{ color: '#A5A58D' }}>
+                        out of {chapters.reduce((total, chapter) => total + chapter.questions.length, 0)} total
+                      </p>
                     </div>
                   </div>
                 </div>

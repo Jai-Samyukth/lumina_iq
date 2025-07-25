@@ -61,11 +61,21 @@ export interface User {
 }
 
 class AuthService {
-  private token: string | null = null;
+  private user: User | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token') || getCookie('auth_token');
+      const userData = localStorage.getItem('user_data');
+      const isLoggedIn = getCookie('user_session') === 'true';
+
+      if (userData && isLoggedIn) {
+        try {
+          this.user = JSON.parse(userData);
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          this.clearSession();
+        }
+      }
     }
   }
 
@@ -74,10 +84,11 @@ class AuthService {
       const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
       const data = response.data;
 
-      this.token = data.access_token;
+      // Store user session
+      this.user = { username: credentials.username };
       if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_token', data.access_token);
-        setCookie('auth_token', data.access_token, 1); // Store in cookie for middleware
+        localStorage.setItem('user_data', JSON.stringify(this.user));
+        setCookie('user_session', 'true', 1); // Simple session flag
       }
 
       return data;
@@ -88,46 +99,52 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      if (this.token) {
-        await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
-          headers: { Authorization: `Bearer ${this.token}` }
-        });
-      }
+      // Simple logout - just clear session
+      await axios.post(`${API_BASE_URL}/auth/logout`);
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      this.token = null;
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        deleteCookie('auth_token'); // Remove from cookie as well
-      }
+      this.clearSession();
+    }
+  }
+
+  private clearSession(): void {
+    this.user = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_data');
+      deleteCookie('user_session');
     }
   }
 
   async verifyAuth(): Promise<User | null> {
-    if (!this.token) return null;
+    // Simple verification - just check if session exists
+    if (typeof window !== 'undefined') {
+      const isLoggedIn = getCookie('user_session') === 'true';
+      const userData = localStorage.getItem('user_data');
 
-    try {
-      const response = await axios.get(`${API_BASE_URL}/auth/verify`, {
-        headers: { Authorization: `Bearer ${this.token}` }
-      });
-      return response.data;
-    } catch (error) {
-      this.token = null;
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        deleteCookie('auth_token'); // Remove from cookie as well
+      if (isLoggedIn && userData) {
+        try {
+          this.user = JSON.parse(userData);
+          return this.user;
+        } catch (error) {
+          this.clearSession();
+          return null;
+        }
       }
-      return null;
     }
+
+    return this.user;
   }
 
-  getToken(): string | null {
-    return this.token;
+  getUser(): User | null {
+    return this.user;
   }
 
   isAuthenticated(): boolean {
-    return !!this.token;
+    if (typeof window !== 'undefined') {
+      return getCookie('user_session') === 'true' && !!localStorage.getItem('user_data');
+    }
+    return !!this.user;
   }
 }
 

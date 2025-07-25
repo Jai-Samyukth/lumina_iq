@@ -31,7 +31,16 @@ import {
   Award,
   TrendingUp,
   AlertCircle,
-  StickyNote
+  StickyNote,
+  Menu,
+  Settings,
+  Play,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  Send,
+  Timer,
+  BarChart3
 } from 'lucide-react';
 
 interface Question {
@@ -50,6 +59,7 @@ export default function AnswerQuestionsPage() {
   const [pdfInfo, setPdfInfo] = useState<PDFSessionInfo | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState<CurrentStep>('setup');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Setup state
   const [questionTopic, setQuestionTopic] = useState('');
@@ -110,24 +120,26 @@ export default function AnswerQuestionsPage() {
       if (jsonMatch) {
         try {
           const parsedData = JSON.parse(jsonMatch[0]);
+          console.log('Parsed data:', parsedData);
 
           if (parsedData.questions && Array.isArray(parsedData.questions)) {
-            const generatedQuestions: Question[] = parsedData.questions.map((q: string, qIndex: number) => ({
-              id: `q-${qIndex}`,
+            const generatedQuestions: Question[] = parsedData.questions.map((q: string, index: number) => ({
+              id: `q-${index}`,
               question: q,
               userAnswer: '',
               isAnswered: false
             }));
 
-            console.log('Generated questions:', parsedData.questions.length);
             setQuestions(generatedQuestions);
             setCurrentStep('answering');
+            setCurrentQuestionIndex(0);
           } else {
-            throw new Error('Invalid questions structure - expected questions array');
+            console.error('Invalid data structure:', parsedData);
+            alert('Failed to generate questions. Please try again.');
           }
         } catch (parseError) {
-          console.error('Failed to parse questions JSON:', parseError);
-          alert('Failed to parse generated questions. Please try again.');
+          console.error('Failed to parse JSON:', parseError);
+          alert('Failed to generate questions. Please try again.');
         }
       } else {
         console.error('No JSON found in AI response');
@@ -154,68 +166,14 @@ export default function AnswerQuestionsPage() {
 
     setEvaluatingAnswers(true);
     try {
-      if (questionMode === 'quiz') {
-        // Evaluate all answers together for quiz mode
-        const quizAnswers: QuizAnswer[] = questions.map(q => ({
-          question_id: q.id,
-          question: q.question,
-          user_answer: q.userAnswer
-        }));
+      const answers: QuizAnswer[] = questions.map(q => ({
+        question_id: q.id,
+        question: q.question,
+        user_answer: q.userAnswer
+      }));
 
-        const results = await chatApi.evaluateQuiz({
-          answers: quizAnswers,
-          topic: questionTopic.trim() || undefined,
-          evaluation_level: evaluationLevel
-        });
-
-        setQuizResults(results);
-        
-        // Update questions with individual evaluations
-        setQuestions(prev => prev.map(q => {
-          const evaluation = results.individual_results.find(r => r.question_id === q.id);
-          return evaluation ? { ...q, evaluation } : q;
-        }));
-      } else {
-        // Evaluate answers individually for practice mode
-        const evaluatedQuestions = [...questions];
-        
-        for (let i = 0; i < questions.length; i++) {
-          const question = questions[i];
-          if (question.userAnswer.trim()) {
-            try {
-              const evaluation = await chatApi.evaluateAnswer({
-                question: question.question,
-                user_answer: question.userAnswer,
-                question_id: question.id,
-                evaluation_level: evaluationLevel
-              });
-              evaluatedQuestions[i] = { ...question, evaluation };
-            } catch (error) {
-              console.error(`Failed to evaluate question ${question.id}:`, error);
-            }
-          }
-        }
-        
-        setQuestions(evaluatedQuestions);
-        
-        // Create summary results for practice mode
-        const totalScore = evaluatedQuestions.reduce((sum, q) => sum + (q.evaluation?.score || 0), 0);
-        const maxScore = evaluatedQuestions.length * 10;
-        const percentage = (totalScore / maxScore) * 100;
-        
-        setQuizResults({
-          overall_score: totalScore,
-          max_score: maxScore,
-          percentage: Math.round(percentage * 10) / 10,
-          grade: percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : 'F',
-          individual_results: evaluatedQuestions.map(q => q.evaluation!).filter(Boolean),
-          overall_feedback: `Practice session completed. You scored ${totalScore}/${maxScore} (${Math.round(percentage)}%).`,
-          study_suggestions: ['Review questions you scored low on', 'Practice more questions on challenging topics'],
-          strengths: ['Completed all questions'],
-          areas_for_improvement: ['Focus on accuracy', 'Provide more detailed answers']
-        });
-      }
-
+      const response = await chatApi.submitQuiz(answers, evaluationLevel);
+      setQuizResults(response);
       setCurrentStep('results');
     } catch (error) {
       console.error('Failed to evaluate answers:', error);
@@ -228,25 +186,41 @@ export default function AnswerQuestionsPage() {
   const resetQuiz = () => {
     setCurrentStep('setup');
     setQuestions([]);
-    setQuizResults(null);
     setCurrentQuestionIndex(0);
+    setQuizResults(null);
     setQuestionTopic('');
+    setQuestionCount(10);
+    setQuestionMode('quiz');
     setEvaluationLevel('medium');
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'Unknown') return 'Unknown';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return 'Unknown';
+    }
   };
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFE8D6' }}>
         <div className="text-center">
-          <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse">
-            <Sparkles className="h-8 w-8 text-white" />
+          <div className="p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse" 
+               style={{ backgroundColor: '#CB997E' }}>
+            <Brain className="h-8 w-8 text-white" />
           </div>
-          <p className="text-slate-600">Loading...</p>
+          <h3 className="text-xl font-bold mb-2" style={{ color: '#6B705C' }}>Loading Answer Quiz</h3>
+          <p style={{ color: '#A5A58D' }}>Preparing your quiz environment...</p>
         </div>
       </div>
     );
@@ -254,519 +228,301 @@ export default function AnswerQuestionsPage() {
 
   if (!pdfInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFE8D6' }}>
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">No PDF Selected</h2>
-          <p className="text-slate-600 mb-4">Please select a PDF document first.</p>
+          <AlertCircle className="h-16 w-16 mx-auto mb-4" style={{ color: '#CB997E' }} />
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#6B705C' }}>No PDF Selected</h2>
+          <p className="mb-6" style={{ color: '#A5A58D' }}>Please upload a PDF document to start the quiz.</p>
           <button
             onClick={() => router.push('/upload')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+            style={{ backgroundColor: '#CB997E', color: 'white' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#B8876B';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#CB997E';
+            }}
           >
-            Select PDF
+            Upload PDF
           </button>
         </div>
       </div>
     );
   }
 
+  const navigationItems = [
+    { icon: MessageSquare, label: 'Chat', path: '/chat' },
+    { icon: HelpCircle, label: 'Q&A', path: '/qa' },
+    { icon: Brain, label: 'Answer Quiz', path: '/answer-questions', active: true },
+    { icon: StickyNote, label: 'Notes', path: '/notes' },
+    { icon: UploadIcon, label: 'New PDF', path: '/upload' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-white/20 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                <Brain className="h-6 w-6 text-white" />
+    <div className="h-screen flex" style={{ backgroundColor: '#FFE8D6' }}>
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}
+           style={{ backgroundColor: '#DDBEA9' }}>
+        <div className="flex flex-col h-full">
+          {/* Logo Section */}
+          <div className="p-6 border-b" style={{ borderColor: '#B7B7A4' }}>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-xl" style={{ backgroundColor: '#CB997E' }}>
+                <BookOpen className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">Answer Questions</h1>
-                <p className="text-sm text-slate-600">Test your knowledge with AI evaluation</p>
+                <h1 className="text-xl font-bold" style={{ color: '#6B705C' }}>LuminalQ</h1>
+                <p className="text-xs font-medium" style={{ color: '#A5A58D' }}>AI Learning Assistant</p>
               </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                <User className="h-4 w-4" />
-                <span>{user?.username}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-slate-600 hover:text-slate-800 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="text-sm">Logout</span>
-              </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* PDF Info Bar */}
-      <div className="bg-white/60 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-slate-800">{pdfInfo.filename}</p>
-                <div className="flex items-center space-x-4 text-sm text-slate-600">
-                  <span className="flex items-center space-x-1">
-                    <Hash className="h-3 w-3" />
-                    <span>{pdfInfo.pages} pages</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <HardDrive className="h-3 w-3" />
-                    <span>{(pdfInfo.file_size / 1024).toFixed(1)} KB</span>
-                  </span>
-                </div>
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            {navigationItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => {
+                  router.push(item.path);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                  item.active
+                    ? 'shadow-lg transform scale-105'
+                    : 'hover:shadow-md hover:transform hover:scale-105'
+                }`}
+                style={{
+                  backgroundColor: item.active ? '#CB997E' : 'transparent',
+                  color: item.active ? 'white' : '#6B705C'
+                }}
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* User Section */}
+          <div className="p-4 border-t" style={{ borderColor: '#B7B7A4' }}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#A5A58D' }}>
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: '#6B705C' }}>
+                  {user?.email}
+                </p>
+                <p className="text-xs" style={{ color: '#A5A58D' }}>Logged in</p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => router.push('/upload')}
-                className="flex items-center space-x-2 text-slate-600 hover:text-slate-800 transition-colors text-sm"
-              >
-                <UploadIcon className="h-4 w-4" />
-                <span>Change PDF</span>
-              </button>
-              <button
-                onClick={() => router.push('/notes')}
-                className="flex items-center space-x-2 text-slate-600 hover:text-slate-800 transition-colors text-sm"
-              >
-                <StickyNote className="h-4 w-4" />
-                <span>Notes</span>
-              </button>
-              <button
-                onClick={() => router.push('/qa')}
-                className="flex items-center space-x-2 text-slate-600 hover:text-slate-800 transition-colors text-sm"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>Q&A Mode</span>
-              </button>
-            </div>
+            <button
+              onClick={logout}
+              className="w-full flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+              style={{ backgroundColor: '#CB997E', color: 'white' }}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {currentStep === 'setup' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-8">
-            <div className="text-center mb-8">
-              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                <Target className="h-8 w-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">Setup Your Quiz</h2>
-              <p className="text-slate-600">Configure your learning session</p>
+      <div className="flex-1 flex flex-col lg:flex-row h-full min-h-0">
+        {/* Mobile Header */}
+        <div className="flex-shrink-0 lg:hidden p-4 border-b flex items-center justify-between" style={{ borderColor: '#DDBEA9' }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-black hover:bg-opacity-10 transition-colors"
+          >
+            <Menu className="h-6 w-6" style={{ color: '#6B705C' }} />
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="p-2 rounded-lg" style={{ backgroundColor: '#CB997E' }}>
+              <Brain className="h-5 w-5 text-white" />
             </div>
-
-            <div className="space-y-6">
-              {/* Topic Input */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Specific Topic (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={questionTopic}
-                  onChange={(e) => setQuestionTopic(e.target.value)}
-                  placeholder="e.g., Machine Learning, Chapter 3, Data Structures..."
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-sm text-slate-500 mt-1">
-                  Leave empty to generate questions from the entire document
-                </p>
-              </div>
-
-              {/* Question Count */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Number of Questions
-                </label>
-                <select
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(Number(e.target.value))}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value={5}>5 Questions</option>
-                  <option value={10}>10 Questions</option>
-                  <option value={15}>15 Questions</option>
-                  <option value={20}>20 Questions</option>
-                  <option value={25}>25 Questions</option>
-                </select>
-              </div>
-
-              {/* Mode Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Learning Mode
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setQuestionMode('quiz')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      questionMode === 'quiz'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <Award className="h-6 w-6 mx-auto mb-2" />
-                    <h3 className="font-medium mb-1">Quiz Mode</h3>
-                    <p className="text-sm text-slate-600">
-                      Answer all questions, then get comprehensive evaluation
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setQuestionMode('practice')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      questionMode === 'practice'
-                        ? 'border-purple-500 bg-purple-50 text-purple-700'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <TrendingUp className="h-6 w-6 mx-auto mb-2" />
-                    <h3 className="font-medium mb-1">Practice Mode</h3>
-                    <p className="text-sm text-slate-600">
-                      Get immediate feedback after each answer
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Evaluation Level Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Evaluation Level
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => setEvaluationLevel('easy')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      evaluationLevel === 'easy'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <CheckCircle className="h-6 w-6 mx-auto mb-2" />
-                    <h3 className="font-medium mb-1">Easy</h3>
-                    <p className="text-sm text-slate-600">
-                      Lenient evaluation, focuses on basic understanding
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setEvaluationLevel('medium')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      evaluationLevel === 'medium'
-                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <Target className="h-6 w-6 mx-auto mb-2" />
-                    <h3 className="font-medium mb-1">Medium</h3>
-                    <p className="text-sm text-slate-600">
-                      Balanced evaluation with moderate expectations
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setEvaluationLevel('strict')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      evaluationLevel === 'strict'
-                        ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <AlertCircle className="h-6 w-6 mx-auto mb-2" />
-                    <h3 className="font-medium mb-1">Strict</h3>
-                    <p className="text-sm text-slate-600">
-                      Rigorous evaluation requiring detailed answers
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Generate Button */}
-              <div className="text-center pt-4">
-                <button
-                  onClick={generateQuestions}
-                  disabled={generatingQuestions}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {generatingQuestions ? (
-                    <>
-                      <Clock className="h-5 w-5 inline mr-2 animate-spin" />
-                      Generating Questions...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-5 w-5 inline mr-2" />
-                      Generate {questionCount} Questions
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+            <h1 className="text-lg font-bold" style={{ color: '#6B705C' }}>Answer Quiz</h1>
           </div>
-        )}
+          <div></div>
+        </div>
 
-        {currentStep === 'answering' && (
-          <div className="space-y-6">
-            {/* Progress Bar */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-800">
-                  {questionMode === 'quiz' ? 'Quiz' : 'Practice'} Session
-                </h2>
-                <div className="text-sm text-slate-600">
-                  {questions.filter(q => q.isAnswered).length} / {questions.length} answered
+        {/* Quiz Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6">
+            {currentStep === 'setup' && (
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center py-8 mb-8">
+                  <div className="p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg"
+                       style={{ backgroundColor: '#CB997E' }}>
+                    <Target className="h-8 w-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2" style={{ color: '#6B705C' }}>
+                    Setup Your Quiz
+                  </h2>
+                  <p style={{ color: '#A5A58D' }}>
+                    Configure your personalized learning session for "{pdfInfo?.filename}"
+                  </p>
                 </div>
-              </div>
 
-              <div className="w-full bg-slate-200 rounded-full h-2 mb-4">
-                <div
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(questions.filter(q => q.isAnswered).length / questions.length) * 100}%` }}
-                ></div>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">
-                  Topic: {questionTopic.trim() || 'General'}
-                </span>
-                <div className="flex items-center space-x-4">
-                  <span className="text-slate-600">
-                    Mode: {questionMode === 'quiz' ? 'Quiz' : 'Practice'}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    evaluationLevel === 'easy'
-                      ? 'bg-green-100 text-green-700'
-                      : evaluationLevel === 'strict'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {evaluationLevel.charAt(0).toUpperCase() + evaluationLevel.slice(1)} Level
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Questions */}
-            <div className="space-y-4">
-              {questions.map((question, index) => (
-                <div key={question.id} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-slate-800 mb-4">
-                        {question.question}
-                      </h3>
-
-                      <textarea
-                        value={question.userAnswer}
-                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                        placeholder="Type your answer here..."
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                        rows={4}
+                {/* Enhanced Setup Form */}
+                <div className="rounded-2xl p-8 shadow-lg border-2 mb-8"
+                     style={{ backgroundColor: '#DDBEA9', borderColor: '#B7B7A4' }}>
+                  <div className="space-y-6">
+                    {/* Topic Input */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <Target className="h-4 w-4 inline mr-2" />
+                        Specific Topic (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={questionTopic}
+                        onChange={(e) => setQuestionTopic(e.target.value)}
+                        placeholder="e.g., 'machine learning', 'chapter 3', 'data structures'..."
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium"
+                        style={{
+                          backgroundColor: '#FFE8D6',
+                          borderColor: '#B7B7A4',
+                          color: '#6B705C'
+                        }}
                       />
-
-                      {question.isAnswered && (
-                        <div className="mt-2 flex items-center text-sm text-green-600">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Answer provided
-                        </div>
-                      )}
+                      <p className="text-xs mt-2" style={{ color: '#A5A58D' }}>
+                        Leave empty for questions about the entire document
+                      </p>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Submit Button */}
-            <div className="text-center pt-6">
-              <button
-                onClick={evaluateAnswers}
-                disabled={evaluatingAnswers || questions.filter(q => q.isAnswered).length === 0}
-                className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {evaluatingAnswers ? (
-                  <>
-                    <Clock className="h-5 w-5 inline mr-2 animate-spin" />
-                    Evaluating Answers...
-                  </>
-                ) : (
-                  <>
-                    <Award className="h-5 w-5 inline mr-2" />
-                    Submit & Get Results
-                  </>
-                )}
-              </button>
+                    {/* Question Count */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <Hash className="h-4 w-4 inline mr-2" />
+                        Number of Questions
+                      </label>
+                      <select
+                        value={questionCount}
+                        onChange={(e) => setQuestionCount(Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium"
+                        style={{
+                          backgroundColor: '#FFE8D6',
+                          borderColor: '#B7B7A4',
+                          color: '#6B705C'
+                        }}
+                      >
+                        <option value={5}>5 Questions</option>
+                        <option value={10}>10 Questions</option>
+                        <option value={15}>15 Questions</option>
+                        <option value={20}>20 Questions</option>
+                        <option value={25}>25 Questions</option>
+                      </select>
+                    </div>
 
-              {questions.filter(q => q.isAnswered).length === 0 && (
-                <p className="text-sm text-slate-500 mt-2">
-                  Please answer at least one question to submit
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'results' && quizResults && (
-          <div className="space-y-6">
-            {/* Overall Results */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-8">
-              <div className="text-center mb-8">
-                <div className={`p-4 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg ${
-                  quizResults.percentage >= 80
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                    : quizResults.percentage >= 60
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                    : 'bg-gradient-to-r from-red-500 to-pink-500'
-                }`}>
-                  <Award className="h-8 w-8 text-white" />
-                </div>
-
-                <h2 className="text-3xl font-bold text-slate-800 mb-2">
-                  {quizResults.percentage}%
-                </h2>
-                <p className="text-xl text-slate-600 mb-1">
-                  Grade: {quizResults.grade}
-                </p>
-                <p className="text-slate-500">
-                  {quizResults.overall_score} / {quizResults.max_score} points
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <h3 className="font-medium text-green-800 mb-2">Strengths</h3>
-                  <ul className="text-sm text-green-700 space-y-1">
-                    {quizResults.strengths.map((strength, index) => (
-                      <li key={index}>• {strength}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-medium text-blue-800 mb-2">Study Suggestions</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    {quizResults.study_suggestions.map((suggestion, index) => (
-                      <li key={index}>• {suggestion}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <h3 className="font-medium text-orange-800 mb-2">Areas to Improve</h3>
-                  <ul className="text-sm text-orange-700 space-y-1">
-                    {quizResults.areas_for_improvement.map((area, index) => (
-                      <li key={index}>• {area}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-lg p-6 mb-6">
-                <h3 className="font-medium text-slate-800 mb-2">Overall Feedback</h3>
-                <p className="text-slate-700">{quizResults.overall_feedback}</p>
-              </div>
-            </div>
-
-            {/* Individual Question Results */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6">
-              <h3 className="text-xl font-bold text-slate-800 mb-6">Question-by-Question Results</h3>
-
-              <div className="space-y-6">
-                {questions.map((question, index) => (
-                  <div key={question.id} className="border-b border-slate-200 pb-6 last:border-b-0">
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium flex-shrink-0">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-slate-800 mb-3">
-                          {question.question}
-                        </h4>
-
-                        <div className="bg-slate-50 rounded-lg p-4 mb-4">
-                          <h5 className="text-sm font-medium text-slate-700 mb-2">Your Answer:</h5>
-                          <p className="text-slate-600">{question.userAnswer || 'No answer provided'}</p>
-                        </div>
-
-                        {question.evaluation && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-slate-700">Score:</span>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                question.evaluation.score >= 8
-                                  ? 'bg-green-100 text-green-800'
-                                  : question.evaluation.score >= 6
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {question.evaluation.score}/10
-                              </span>
-                            </div>
-
+                    {/* Mode Selection */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <Settings className="h-4 w-4 inline mr-2" />
+                        Learning Mode
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button
+                          onClick={() => setQuestionMode('quiz')}
+                          className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                            questionMode === 'quiz' ? 'shadow-lg transform scale-105' : 'hover:shadow-md'
+                          }`}
+                          style={{
+                            backgroundColor: questionMode === 'quiz' ? '#CB997E' : '#FFE8D6',
+                            borderColor: questionMode === 'quiz' ? '#CB997E' : '#B7B7A4',
+                            color: questionMode === 'quiz' ? 'white' : '#6B705C'
+                          }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Timer className="h-5 w-5" />
                             <div>
-                              <h5 className="text-sm font-medium text-slate-700 mb-2">Feedback:</h5>
-                              <p className="text-sm text-slate-600">{question.evaluation.feedback}</p>
+                              <h3 className="font-semibold">Quiz Mode</h3>
+                              <p className="text-xs opacity-80">Timed evaluation with scoring</p>
                             </div>
-
-                            <div>
-                              <h5 className="text-sm font-medium text-slate-700 mb-2">Suggestions:</h5>
-                              <p className="text-sm text-slate-600">{question.evaluation.suggestions}</p>
-                            </div>
-
-                            {question.evaluation.correct_answer_hint && (
-                              <div>
-                                <h5 className="text-sm font-medium text-slate-700 mb-2">Hint:</h5>
-                                <p className="text-sm text-slate-600">{question.evaluation.correct_answer_hint}</p>
-                              </div>
-                            )}
                           </div>
-                        )}
+                        </button>
+                        <button
+                          onClick={() => setQuestionMode('practice')}
+                          className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                            questionMode === 'practice' ? 'shadow-lg transform scale-105' : 'hover:shadow-md'
+                          }`}
+                          style={{
+                            backgroundColor: questionMode === 'practice' ? '#CB997E' : '#FFE8D6',
+                            borderColor: questionMode === 'practice' ? '#CB997E' : '#B7B7A4',
+                            color: questionMode === 'practice' ? 'white' : '#6B705C'
+                          }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Brain className="h-5 w-5" />
+                            <div>
+                              <h3 className="font-semibold">Practice Mode</h3>
+                              <p className="text-xs opacity-80">Relaxed learning with feedback</p>
+                            </div>
+                          </div>
+                        </button>
                       </div>
                     </div>
+
+                    {/* Evaluation Level */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-3" style={{ color: '#6B705C' }}>
+                        <BarChart3 className="h-4 w-4 inline mr-2" />
+                        Evaluation Strictness
+                      </label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {(['easy', 'medium', 'strict'] as EvaluationLevel[]).map((level) => (
+                          <button
+                            key={level}
+                            onClick={() => setEvaluationLevel(level)}
+                            className={`p-3 rounded-xl border-2 transition-all duration-200 text-center ${
+                              evaluationLevel === level ? 'shadow-lg transform scale-105' : 'hover:shadow-md'
+                            }`}
+                            style={{
+                              backgroundColor: evaluationLevel === level ? '#A5A58D' : '#FFE8D6',
+                              borderColor: evaluationLevel === level ? '#A5A58D' : '#B7B7A4',
+                              color: evaluationLevel === level ? 'white' : '#6B705C'
+                            }}
+                          >
+                            <div className="text-sm font-semibold capitalize">{level}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Start Button */}
+                    <button
+                      onClick={generateQuestions}
+                      disabled={generatingQuestions}
+                      className="w-full px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: '#CB997E', color: 'white' }}
+                    >
+                      {generatingQuestions ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Generating Questions...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-5 w-5" />
+                          <span>Start {questionMode === 'quiz' ? 'Quiz' : 'Practice'} ({questionCount} Questions)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="text-center space-x-4">
-              <button
-                onClick={resetQuiz}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <Sparkles className="h-5 w-5 inline mr-2" />
-                New Quiz
-              </button>
-
-              <button
-                onClick={() => router.push('/notes')}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <StickyNote className="h-5 w-5 inline mr-2" />
-                Notes
-              </button>
-
-              <button
-                onClick={() => router.push('/qa')}
-                className="bg-slate-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-slate-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <MessageSquare className="h-5 w-5 inline mr-2" />
-                Q&A Mode
-              </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

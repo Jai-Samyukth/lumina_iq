@@ -1,26 +1,22 @@
 import uuid
 from datetime import datetime, timedelta
-from fastapi import HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from config.settings import settings
 
-# Security
-security = HTTPBearer()
-
-def create_session_token():
+def create_session_id():
+    """Create a simple session ID"""
     return str(uuid.uuid4())
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    from utils.storage import sessions  # Import here to avoid circular import
-    
-    token = credentials.credentials
-    if token not in sessions:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    session = sessions.get(token)
+def is_valid_session(session_id: str = None) -> bool:
+    """Simple session validation - optional and flexible"""
+    from utils.storage import user_sessions
+
+    if not session_id:
+        return True  # Allow access without strict validation
+
+    session = user_sessions.get(session_id)
     if session and session["expires_at"] > datetime.now():
-        return token
+        return True
     else:
-        if token in sessions:
-            del sessions[token]
-        raise HTTPException(status_code=401, detail="Token expired")
+        if session_id in user_sessions:
+            del user_sessions[session_id]
+        return False

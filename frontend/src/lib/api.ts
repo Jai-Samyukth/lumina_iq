@@ -8,12 +8,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Add auth token to requests
+// Add session info to requests (if needed)
 api.interceptors.request.use((config) => {
-  const token = authService.getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  // Simple session-based requests - no complex token handling
   return config;
 });
 
@@ -155,6 +152,11 @@ export const chatApi = {
 
   async getChatHistory(): Promise<{ history: ChatHistoryItem[] }> {
     const response = await api.get('/chat/history');
+    return response.data;
+  },
+
+  async clearChatHistory(): Promise<{ message: string }> {
+    const response = await api.delete('/chat/history');
     return response.data;
   },
 
