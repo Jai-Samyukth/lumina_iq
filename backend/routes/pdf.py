@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from models.pdf import PDFListResponse, PDFSelectRequest, PDFUploadResponse
 from services.pdf_service import PDFService
+from utils.cache import cache_service
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 
@@ -34,3 +35,17 @@ async def get_pdf_metadata():
 async def get_pdf_info():
     """Get information about the currently selected PDF"""
     return PDFService.get_pdf_info(DEFAULT_SESSION)
+
+@router.get("/cache/info")
+async def get_cache_info():
+    """Get information about the PDF text extraction cache"""
+    return cache_service.get_cache_info()
+
+@router.delete("/cache/clear")
+async def clear_cache():
+    """Clear all cached PDF text extractions"""
+    deleted_count = cache_service.clear_cache()
+    return {
+        "message": f"Successfully cleared cache",
+        "deleted_files": deleted_count
+    }

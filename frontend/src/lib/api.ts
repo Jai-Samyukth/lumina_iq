@@ -61,6 +61,9 @@ export interface QuizAnswer {
   question_id: string;
   question: string;
   user_answer: string;
+  correct_answer?: string;  // For MCQ questions
+  question_type?: 'mcq' | 'open';  // Question type
+  options?: string[];  // MCQ options for better feedback
 }
 
 export interface QuizSubmissionRequest {
@@ -160,8 +163,8 @@ export const chatApi = {
     return response.data;
   },
 
-  async generateQuestions(topic?: string, count?: number): Promise<ChatResponse> {
-    const response = await api.post('/chat/generate-questions', { topic, count });
+  async generateQuestions(topic?: string, count?: number, mode?: string): Promise<ChatResponse> {
+    const response = await api.post('/chat/generate-questions', { topic, count, mode });
     return response.data;
   },
 
@@ -171,6 +174,15 @@ export const chatApi = {
   },
 
   async evaluateQuiz(request: QuizSubmissionRequest): Promise<QuizSubmissionResponse> {
+    const response = await api.post('/chat/evaluate-quiz', request);
+    return response.data;
+  },
+
+  async submitQuiz(answers: QuizAnswer[], evaluationLevel: string = 'medium'): Promise<QuizSubmissionResponse> {
+    const request: QuizSubmissionRequest = {
+      answers,
+      evaluation_level: evaluationLevel
+    };
     const response = await api.post('/chat/evaluate-quiz', request);
     return response.data;
   },

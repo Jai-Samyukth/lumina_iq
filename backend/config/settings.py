@@ -18,6 +18,7 @@ class Settings:
     
     # File paths
     BOOKS_DIR = '../books'
+    CACHE_DIR = 'cache'
     
     # Session
     SESSION_EXPIRE_HOURS = 24

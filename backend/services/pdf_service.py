@@ -8,13 +8,23 @@ from fastapi import HTTPException, UploadFile
 from typing import List
 from config.settings import settings
 from utils.storage import pdf_contexts, pdf_metadata
+from utils.cache import cache_service
 from models.pdf import PDFInfo, PDFListResponse, PDFUploadResponse, PDFMetadata
 
 class PDFService:
     @staticmethod
     async def extract_text_from_pdf(file_path: str) -> str:
+        print(f"Processing PDF: {file_path}")
+
+        # Check cache first
+        cached_text = await cache_service.get_cached_text(file_path)
+        if cached_text is not None:
+            print(f"Using cached text for {file_path} ({len(cached_text)} characters)")
+            return cached_text
+
+        # Cache miss - extract text from PDF
         text = ""
-        print(f"Extracting text from PDF: {file_path}")
+        print(f"Cache miss - extracting text from PDF: {file_path}")
 
         try:
             with open(file_path, 'rb') as file:
@@ -54,6 +64,13 @@ class PDFService:
         if len(extracted_text) < 50:
             print("Warning: Very little text extracted from PDF")
             print(f"Extracted content: '{extracted_text[:100]}'")
+
+        # Save to cache for future use
+        cache_saved = await cache_service.save_to_cache(file_path, extracted_text)
+        if cache_saved:
+            print(f"Successfully cached extracted text for {file_path}")
+        else:
+            print(f"Failed to cache extracted text for {file_path}")
 
         return extracted_text
 

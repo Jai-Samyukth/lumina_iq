@@ -19,6 +19,7 @@ DEFAULT_SESSION = "default_user"
 class QuestionGenerationRequest(BaseModel):
     topic: Optional[str] = None
     count: Optional[int] = 25
+    mode: Optional[str] = "practice"  # "quiz" for MCQ, "practice" for open-ended
 
 @router.post("/", response_model=ChatResponse)
 async def chat(message: ChatMessage):
@@ -38,7 +39,8 @@ async def clear_chat_history():
 @router.post("/generate-questions", response_model=ChatResponse)
 async def generate_questions(request: QuestionGenerationRequest):
     """Generate Q&A questions from the selected PDF content, optionally focused on a specific topic"""
-    return await ChatService.generate_questions(DEFAULT_SESSION, request.topic, request.count)
+    print(f"DEBUG: Route received request: topic={request.topic}, count={request.count}, mode={request.mode}")
+    return await ChatService.generate_questions(DEFAULT_SESSION, request.topic, request.count, request.mode)
 
 @router.post("/evaluate-answer", response_model=AnswerEvaluationResponse)
 async def evaluate_answer(request: AnswerEvaluationRequest):

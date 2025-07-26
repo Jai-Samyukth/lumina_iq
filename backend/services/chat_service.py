@@ -90,11 +90,13 @@ class ChatService:
         return {"message": "Chat history cleared"}
 
     @staticmethod
-    async def generate_questions(token: str, topic: str = None, count: int = 25) -> ChatResponse:
+    async def generate_questions(token: str, topic: str = None, count: int = 25, mode: str = "practice") -> ChatResponse:
+        print(f"DEBUG: generate_questions called with token={token}, topic={topic}, count={count}, mode={mode}")
         if token not in pdf_contexts:
             raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
 
         pdf_context = pdf_contexts[token]
+        print(f"DEBUG: PDF context found: {pdf_context['filename']}")
 
         # Get the full PDF content for question generation
         full_content = pdf_context['content']
@@ -113,6 +115,60 @@ class ChatService:
             topic_instruction = f"""
         SPECIFIC TOPIC FOCUS: "{topic.strip()}"
         Focus your questions specifically on this topic, but use the full document content as context to ensure accuracy and completeness.
+        """
+
+        # Format instructions based on mode
+        if mode == "quiz":
+            format_instruction = """
+        FORMAT: Create Multiple Choice Questions (MCQ) with 4 options each.
+
+        CRITICAL JSON REQUIREMENTS:
+        - Respond with ONLY a valid JSON object
+        - Do not include any text, explanations, or markdown before or after the JSON
+        - Use proper JSON syntax with double quotes for all strings
+        - Ensure all brackets and braces are properly closed
+        - Do not include trailing commas
+
+        EXACT JSON FORMAT (copy this structure):
+        {
+          "questions": [
+            {
+              "question": "What is the main concept of Ikigai according to the document?",
+              "options": ["A) A Japanese martial art", "B) A reason for being or life purpose", "C) A type of meditation", "D) A business strategy"],
+              "correctAnswer": "B"
+            },
+            {
+              "question": "Which of the following is mentioned as a Blue Zone in the document?",
+              "options": ["A) Tokyo, Japan", "B) New York, USA", "C) Okinawa, Japan", "D) London, UK"],
+              "correctAnswer": "C"
+            }
+          ]
+        }
+
+        MCQ CONTENT REQUIREMENTS:
+        - Each question must have exactly 4 options labeled A), B), C), D)
+        - Only ONE option should be correct based on the document content
+        - Make incorrect options plausible but clearly wrong based on the text
+        - Ensure the correctAnswer field contains only the letter (A, B, C, or D)
+        - All questions must be answerable from the document content provided
+        - Each option should be a complete, standalone answer choice
+
+        JSON SYNTAX RULES:
+        - Use double quotes (") for all strings, never single quotes
+        - Separate array items with commas, but no comma after the last item
+        - Ensure proper nesting of objects and arrays
+        - No comments or extra text allowed in JSON
+        """
+        else:
+            format_instruction = """
+        FORMAT: Create open-ended questions for practice. Respond with ONLY a valid JSON object:
+        {
+          "questions": [
+            "What is the main concept of Ikigai according to the document?",
+            "Explain the characteristics of Blue Zones mentioned in the text.",
+            "How does the document relate Ikigai to logotherapy?"
+          ]
+        }
         """
 
         context = f"""
@@ -141,36 +197,7 @@ class ChatService:
            - Cause and effect relationships
            - Comparisons and contrasts made in the text
 
-        FORMAT: Respond with ONLY a valid JSON object in this exact format:
-        {{
-          "questions": [
-            "What is [specific concept from document]?",
-            "How does [specific process from document] work?",
-            "What are the key benefits of [specific topic] mentioned in the text?",
-            "Can you explain the relationship between [concept A] and [concept B] as described?",
-            "What examples are provided to illustrate [specific concept]?",
-            "What are the main steps involved in [specific process from text]?",
-            "How does the document define [important term]?",
-            "What problems does [solution mentioned] solve according to the text?",
-            "What are the different types of [category from document] mentioned?",
-            "How can [concept from text] be applied in practice?",
-            "What are the advantages and disadvantages of [approach from document]?",
-            "What recommendations does the text make regarding [topic]?",
-            "How does [concept] compare to [alternative] according to the document?",
-            "What are the key takeaways from the document?",
-            "What future implications are discussed for [topic from text]?",
-            "Who are the main people mentioned in the document and what are their contributions?",
-            "What are the most important facts or statistics presented?",
-            "What real-world applications are discussed in the text?",
-            "What challenges or problems are identified in the document?",
-            "How does the author support their main arguments?",
-            "What conclusions does the document reach?",
-            "What are the practical implications of the concepts discussed?",
-            "How do the different sections of the document relate to each other?",
-            "What evidence is provided to support the main points?",
-            "What questions does the document leave unanswered?"
-          ]
-        }}
+        {format_instruction}
 
         Make sure:
         - Questions are specific to the actual document content provided above
@@ -187,6 +214,7 @@ class ChatService:
             # Generate response using Gemini
             print("Sending request to Gemini AI...")
             response = model.generate_content(context)
+            print(f"DEBUG: Gemini response received, length: {len(response.text) if response and response.text else 0}")
 
             if not response or not response.text:
                 raise HTTPException(status_code=500, detail="AI service returned empty response")
@@ -196,13 +224,60 @@ class ChatService:
             print(f"AI Response length: {len(ai_response)} characters")
             print(f"AI Response preview: {ai_response[:500]}...")
 
+            # Clean and validate JSON response
+            cleaned_response = ai_response.strip()
+
+            # Remove markdown code blocks if present
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]
+            if cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response[3:]
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]
+
+            cleaned_response = cleaned_response.strip()
+
             # Validate that response contains JSON-like structure
-            if '{' not in ai_response or '}' not in ai_response:
+            if '{' not in cleaned_response or '}' not in cleaned_response:
                 print("Warning: Response doesn't appear to contain JSON structure")
                 print(f"Full response: {ai_response}")
+                raise HTTPException(status_code=500, detail="AI response does not contain valid JSON structure")
+
+            # Try to parse JSON to validate it
+            try:
+                import json
+                # Extract JSON from the response
+                json_start = cleaned_response.find('{')
+                json_end = cleaned_response.rfind('}') + 1
+
+                if json_start == -1 or json_end == 0:
+                    raise ValueError("No JSON object found")
+
+                json_str = cleaned_response[json_start:json_end]
+
+                # Validate JSON syntax
+                parsed_json = json.loads(json_str)
+
+                # Ensure it has the expected structure
+                if 'questions' not in parsed_json:
+                    raise ValueError("JSON missing 'questions' field")
+
+                if not isinstance(parsed_json['questions'], list):
+                    raise ValueError("'questions' field must be an array")
+
+                # Return the cleaned JSON
+                return ChatResponse(
+                    response=json_str,
+                    timestamp=datetime.now().isoformat()
+                )
+
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"JSON validation error: {e}")
+                print(f"Problematic response: {cleaned_response}")
+                raise HTTPException(status_code=500, detail=f"AI generated invalid JSON: {str(e)}")
 
             return ChatResponse(
-                response=ai_response,
+                response=cleaned_response,
                 timestamp=datetime.now().isoformat()
             )
 
@@ -264,7 +339,22 @@ class ChatService:
         - 5-6: Satisfactory - Partially correct, basic understanding shown
         - 3-4: Needs Improvement - Some correct elements but significant gaps
         - 1-2: Poor - Mostly incorrect or irrelevant
-        - 0: No answer or completely wrong"""
+        - 0: No answer provided or completely wrong
+
+        IMPORTANT: If the student's answer is empty, blank, or just says "No answer provided", give a score of 0."""
+
+        # Check if answer is empty and give 0 score
+        if not request.user_answer or request.user_answer.strip() == "" or request.user_answer.strip().lower() == "no answer provided":
+            return AnswerEvaluationResponse(
+                question_id=request.question_id,
+                score=0,
+                max_score=10,
+                feedback="No answer was provided for this question.",
+                suggestions="Please provide an answer based on the document content to receive a score."
+            )
+
+        # This logic will be handled in the quiz evaluation method instead
+        # Individual answer evaluation continues with the original logic for open-ended questions
 
         # Prepare context for evaluation
         evaluation_context = f"""
@@ -344,14 +434,80 @@ class ChatService:
         total_score = 0
 
         for answer in request.answers:
-            eval_request = AnswerEvaluationRequest(
-                question=answer.question,
-                user_answer=answer.user_answer,
-                question_id=answer.question_id,
-                evaluation_level=request.evaluation_level
-            )
+            # Handle MCQ questions with binary scoring
+            if answer.question_type == 'mcq' and answer.correct_answer:
+                user_answer_clean = answer.user_answer.strip().upper()
+                correct_answer_clean = answer.correct_answer.strip().upper()
 
-            result = await ChatService.evaluate_answer(eval_request, token)
+                # We need to get the actual answer text from the question to provide meaningful feedback
+                # For now, we'll use AI to get the correct answer explanation
+                try:
+                    # Get the correct answer explanation using AI
+                    explanation_context = f"""
+                    You are an educational AI providing feedback on a multiple choice question.
+
+                    Document: {pdf_context['filename']}
+                    Document Content: {pdf_context['content'][:15000]}
+
+                    Question: {answer.question}
+                    Correct Answer: Option {correct_answer_clean}
+
+                    Please provide a brief explanation (1-2 sentences) of why option {correct_answer_clean} is the correct answer based on the document content.
+                    Focus on the specific information from the document that supports this answer.
+
+                    Respond with just the explanation, no additional formatting.
+                    """
+
+                    explanation_response = model.generate_content(explanation_context)
+                    correct_answer_explanation = explanation_response.text.strip() if explanation_response and explanation_response.text else f"Option {correct_answer_clean} is the correct answer according to the document."
+
+                except Exception as e:
+                    print(f"Error getting answer explanation: {e}")
+                    correct_answer_explanation = f"Option {correct_answer_clean} is the correct answer according to the document."
+
+                # Get the actual option texts for better feedback
+                user_option_text = ""
+                correct_option_text = ""
+
+                if answer.options:
+                    # Find the option texts
+                    for option in answer.options:
+                        if option.startswith(f"{user_answer_clean})"):
+                            user_option_text = option
+                        if option.startswith(f"{correct_answer_clean})"):
+                            correct_option_text = option
+
+                # Binary scoring for MCQ: either full marks or zero
+                if user_answer_clean == correct_answer_clean:
+                    score = 10  # Full marks for correct answer
+                    feedback = f"✅ Correct! You selected '{user_option_text or f'Option {user_answer_clean}'}'. {correct_answer_explanation}"
+                    suggestions = "Great job! Continue studying to maintain this level of understanding."
+                elif not answer.user_answer or answer.user_answer.strip() == "" or answer.user_answer.strip().lower() == "no answer provided":
+                    score = 0  # Zero marks for no answer
+                    feedback = f"❌ No answer was provided for this question. The correct answer is '{correct_option_text or f'Option {correct_answer_clean}'}'. {correct_answer_explanation}"
+                    suggestions = "Please provide an answer based on the document content to receive a score."
+                else:
+                    score = 0  # Zero marks for incorrect answer
+                    feedback = f"❌ Incorrect. You selected '{user_option_text or f'Option {user_answer_clean}'}', but the correct answer is '{correct_option_text or f'Option {correct_answer_clean}'}'. {correct_answer_explanation}"
+                    suggestions = "Review the relevant section in the document to understand the correct answer."
+
+                result = AnswerEvaluationResponse(
+                    question_id=answer.question_id,
+                    score=score,
+                    max_score=10,
+                    feedback=feedback,
+                    suggestions=suggestions
+                )
+            else:
+                # Handle open-ended questions with AI evaluation
+                eval_request = AnswerEvaluationRequest(
+                    question=answer.question,
+                    user_answer=answer.user_answer,
+                    question_id=answer.question_id,
+                    evaluation_level=request.evaluation_level
+                )
+                result = await ChatService.evaluate_answer(eval_request, token)
+
             individual_results.append(result)
             total_score += result.score
 

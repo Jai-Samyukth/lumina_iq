@@ -26,6 +26,9 @@ class QuizAnswer(BaseModel):
     question_id: str
     question: str
     user_answer: str
+    correct_answer: Optional[str] = None  # For MCQ questions
+    question_type: Optional[str] = None   # 'mcq' or 'open'
+    options: Optional[List[str]] = None   # MCQ options for better feedback
 
 class QuizSubmissionRequest(BaseModel):
     answers: List[QuizAnswer]
