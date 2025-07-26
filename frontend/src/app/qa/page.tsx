@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
@@ -731,6 +731,12 @@ Please provide a thorough, well-structured answer that helps the user learn from
                                         <ReactMarkdown
                                           remarkPlugins={[remarkGfm]}
                                           components={{
+                                            p: ({ children }) => (
+                                              <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>{children}</p>
+                                            ),
+                                            pre: ({ children }) => (
+                                              <div className="my-2">{children}</div>
+                                            ),
                                             h1: ({ children }) => (
                                               <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" style={{ color: '#6B705C' }}>
                                                 {children}

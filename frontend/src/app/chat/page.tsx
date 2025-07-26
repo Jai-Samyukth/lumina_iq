@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, ChatHistoryItem, PDFSessionInfo } from '@/lib/api';
@@ -368,6 +368,12 @@ export default function ChatPage() {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
+                            p: ({ children }) => (
+                              <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>{children}</p>
+                            ),
+                            pre: ({ children }) => (
+                              <div className="my-3">{children}</div>
+                            ),
                             code: ({ className, children, ...props }) => {
                               const match = /language-(\w+)/.exec(className || '');
                               const isInline = 'inline' in props;

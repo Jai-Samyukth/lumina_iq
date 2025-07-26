@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
@@ -705,6 +705,12 @@ Make the notes comprehensive, well-organized, and suitable for studying.`;
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
+                          p: ({ children }) => (
+                            <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>{children}</p>
+                          ),
+                          pre: ({ children }) => (
+                            <div className="my-3">{children}</div>
+                          ),
                           h1: ({ children }) => (
                             <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0" style={{ color: '#6B705C' }}>
                               {children}
