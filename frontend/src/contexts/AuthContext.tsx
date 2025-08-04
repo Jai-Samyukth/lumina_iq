@@ -23,9 +23,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      setLoading(true);
       const userData = await authService.verifyAuth();
       setUser(userData);
     } catch (error) {
+      console.error('Auth verification failed:', error);
       setUser(null);
     } finally {
       setLoading(false);

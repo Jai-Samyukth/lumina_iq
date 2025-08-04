@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, ChatHistoryItem, PDFSessionInfo } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Send,
   BookOpen,
@@ -159,7 +161,7 @@ export default function ChatPage() {
 
   const navigationItems = [
     { icon: MessageCircle, label: 'Chat', path: '/chat', active: true },
-    { icon: HelpCircle, label: 'Q&A', path: '/qa' },
+    { icon: HelpCircle, label: 'Q&A Generation', path: '/qa' },
     { icon: Brain, label: 'Answer Quiz', path: '/answer-questions' },
     { icon: StickyNote, label: 'Notes', path: '/notes' },
     { icon: UploadIcon, label: 'New PDF', path: '/upload' },
@@ -372,31 +374,55 @@ export default function ChatPage() {
                               <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>{children}</p>
                             ),
                             pre: ({ children }) => (
-                              <div className="my-3">{children}</div>
+                              <div className="my-4 overflow-hidden rounded-lg">{children}</div>
                             ),
                             code: ({ className, children, ...props }) => {
                               const match = /language-(\w+)/.exec(className || '');
-                              const isInline = 'inline' in props;
+                              const language = match ? match[1] : '';
+                              const isInline = !className || !match;
+
                               return !isInline ? (
-                                <div className="relative my-3">
-                                  <pre className="bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto text-sm">
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  </pre>
-                                  <button
-                                    onClick={() => copyToClipboard(String(children), index)}
-                                    className="absolute top-2 right-2 p-1.5 bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                                <div className="relative my-4 group">
+                                  <div className="flex items-center justify-between bg-gray-800 text-gray-300 px-4 py-2 rounded-t-lg text-sm">
+                                    <span className="font-medium">
+                                      {language ? language.toUpperCase() : 'CODE'}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(String(children), index)}
+                                      className="flex items-center space-x-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors opacity-0 group-hover:opacity-100"
+                                      title="Copy code"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <Check className="h-3 w-3 text-green-400" />
+                                          <span className="text-green-400">Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <SyntaxHighlighter
+                                    language={language || 'text'}
+                                    style={vscDarkPlus}
+                                    customStyle={{
+                                      margin: 0,
+                                      borderRadius: '0 0 0.5rem 0.5rem',
+                                      fontSize: '0.875rem',
+                                      lineHeight: '1.5'
+                                    }}
+                                    showLineNumbers={true}
+                                    wrapLines={true}
+                                    {...props}
                                   >
-                                    {copiedIndex === index ? (
-                                      <Check className="h-3 w-3 text-green-400" />
-                                    ) : (
-                                      <Copy className="h-3 w-3 text-slate-300" />
-                                    )}
-                                  </button>
+                                    {String(children).replace(/\n$/, '')}
+                                  </SyntaxHighlighter>
                                 </div>
                               ) : (
-                                <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                                <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono border" {...props}>
                                   {children}
                                 </code>
                               );

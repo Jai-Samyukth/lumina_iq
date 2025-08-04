@@ -374,7 +374,7 @@ Make the notes comprehensive, well-organized, and suitable for studying.`;
 
   const navigationItems = [
     { icon: MessageSquare, label: 'Chat', path: '/chat' },
-    { icon: HelpCircle, label: 'Q&A', path: '/qa' },
+    { icon: HelpCircle, label: 'Q&A Generation', path: '/qa' },
     { icon: Brain, label: 'Answer Quiz', path: '/answer-questions' },
     { icon: StickyNote, label: 'Notes', path: '/notes', active: true },
     { icon: UploadIcon, label: 'New PDF', path: '/upload' },
