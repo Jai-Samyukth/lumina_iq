@@ -22,7 +22,7 @@ class Settings:
     
     # Gemini AI
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyBiKBADQGhRuFn5glEU-frmORFc0KRleVQ')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-lite')
     
     # CORS - Dynamic IP detection for development
     @property
@@ -40,7 +40,7 @@ class Settings:
         return list(set(origins))  # Remove duplicates
     
     # File paths
-    BOOKS_DIR = '../books'
+    BOOKS_DIR = r"S:\software\PDFFiles"
     CACHE_DIR = 'cache'
     
     # Session

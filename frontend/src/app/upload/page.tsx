@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { pdfApi, PDFInfo } from '@/lib/api';
 import { FileText, AlertCircle, LogOut, BookOpen, Book, User, FileIcon, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
+import LoadingBox from '@/components/LoadingBox';
 
 export default function UploadPage() {
   const [error, setError] = useState('');
@@ -13,6 +14,7 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selecting, setSelecting] = useState(false);
+  const [showLoadingBox, setShowLoadingBox] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
@@ -106,14 +108,14 @@ export default function UploadPage() {
 
   const handleSelectPDF = async (filename: string) => {
     try {
-      setSelecting(true);
+      setShowLoadingBox(true);
       setError('');
       await pdfApi.selectPDF(filename);
       router.push('/chat');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to select PDF');
     } finally {
-      setSelecting(false);
+      setShowLoadingBox(false);
     }
   };
 
@@ -123,7 +125,9 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen relative bg-cream">
+    <>
+      <LoadingBox isVisible={showLoadingBox} />
+      <div className="min-h-screen relative bg-cream">
       {/* Simplified background with subtle animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="floating-bubbles">
@@ -261,22 +265,12 @@ export default function UploadPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base lg:text-lg font-bold mb-1 text-olive-green line-clamp-2">
+                        <h3 className="text-base lg:text-lg font-bold text-olive-green line-clamp-2">
                           {pdf.title !== 'Unknown' ? pdf.title : pdf.filename}
                         </h3>
-                        <p className="text-xs lg:text-sm mb-2 text-muted-sage truncate">
+                        <p className="text-xs lg:text-sm text-muted-sage truncate">
                           {pdf.filename}
                         </p>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs lg:text-sm text-light-sage">
-                          <div className="flex items-center space-x-1 lg:space-x-2">
-                            <User className="h-4 w-4" />
-                            <span className="truncate">{pdf.author !== 'Unknown' ? pdf.author : 'Unknown Author'}</span>
-                          </div>
-                          <div className="flex items-center space-x-1 lg:space-x-2">
-                            <FileText className="h-4 w-4" />
-                            <span>{pdf.pages} pages</span>
-                          </div>
-                        </div>
                       </div>
                       {selecting ? (
                         <div className="flex items-center justify-center">
@@ -330,5 +324,6 @@ export default function UploadPage() {
         </section>
       </main>
     </div>
+    </>
   );
 }

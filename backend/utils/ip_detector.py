@@ -10,7 +10,10 @@ import socket
 import os
 import re
 from pathlib import Path
+import logging
 
+# Create a logger
+ip_logger = logging.getLogger(__name__)
 
 def get_local_ip():
     """
@@ -26,10 +29,11 @@ def get_local_ip():
             # Connect to Google's DNS server (8.8.8.8) on port 80
             s.connect(("8.8.8.8", 80))
             local_ip = s.getsockname()[0]
+            ip_logger.info("Local IP address detected", local_ip=local_ip)
             return local_ip
     except Exception as e:
-        print(f"⚠️  Warning: Could not detect local IP address: {e}")
-        print("🔄 Falling back to localhost (127.0.0.1)")
+        ip_logger.warning("Could not detect local IP address", error=str(e))
+        ip_logger.info("Falling back to localhost (127.0.0.1)")
         return "127.0.0.1"
 
 
@@ -74,14 +78,12 @@ def update_frontend_env(ip_address, port=8000):
         with open(frontend_env_path, 'w') as f:
             f.write(updated_content)
         
-        print(f"✅ Updated frontend .env file:")
-        print(f"   📍 API URL: {new_api_url}")
-        print(f"   📁 File: {frontend_env_path}")
+        ip_logger.info("Updated frontend .env file", api_url=new_api_url, file=str(frontend_env_path))
         
     except Exception as e:
-        print(f"❌ Error updating frontend .env file: {e}")
-        print(f"   Please manually update the NEXT_PUBLIC_API_BASE_URL in frontend/.env")
-        print(f"   Set it to: http://{ip_address}:{port}/api")
+        ip_logger.error("Error updating frontend .env file", error=str(e))
+        ip_logger.info("Please manually update the NEXT_PUBLIC_API_BASE_URL in frontend/.env")
+        ip_logger.info(f"Set it to: http://{ip_address}:{port}/api")
 
 
 def setup_frontend_env(port=8000):

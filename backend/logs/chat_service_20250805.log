@@ -1,0 +1,56 @@
+2025-08-05 14:18:38 | INFO | chat_service | info:66 | API ROTATION: Using key #10/14 - AIzaSyA8...*******************************
+2025-08-05 14:18:46 | INFO | chat_service | info:66 | API ROTATION: Using key #11/14 - AIzaSyAu...*******************************
+2025-08-05 14:19:30 | INFO | chat_service | info:66 | API ROTATION: Using key #12/14 - AIzaSyAd...*******************************
+2025-08-05 14:20:06 | INFO | chat_service | info:66 | API ROTATION: Using key #13/14 - AIzaSyA3...*******************************
+2025-08-05 14:20:11 | INFO | chat_service | info:66 | API ROTATION: Using key #14/14 - AIzaSyAR...*******************************
+2025-08-05 14:26:45 | INFO | chat_service | info:66 | API ROTATION: Using key #1/14 - AIzaSyAn...*******************************
+2025-08-05 14:26:53 | INFO | chat_service | info:66 | API ROTATION: Using key #2/14 - AIzaSyAE...*******************************
+2025-08-05 14:27:21 | INFO | chat_service | info:66 | API ROTATION: Using key #3/14 - AIzaSyDM...*******************************
+2025-08-05 14:27:59 | INFO | chat_service | info:66 | API ROTATION: Using key #4/14 - AIzaSyDE...*******************************
+2025-08-05 14:28:15 | INFO | chat_service | info:66 | API ROTATION: Using key #5/14 - AIzaSyBS...*******************************
+2025-08-05 14:28:52 | INFO | chat_service | info:66 | API ROTATION: Using key #6/14 - AIzaSyAB...*******************************
+2025-08-05 14:29:33 | INFO | chat_service | info:66 | API ROTATION: Using key #7/14 - AIzaSyAT...*******************************
+2025-08-05 14:30:01 | INFO | chat_service | info:66 | API ROTATION: Using key #8/14 - AIzaSyCC...*******************************
+2025-08-05 15:21:58 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "6d0a05855dd014eb", "topic": "", "count": 25, "mode": "practice"}, "timestamp": "2025-08-05T09:51:58.596567", "logger": "chat_service"}
+2025-08-05 15:21:58 | ERROR | chat_service | error:74 | {"message": "No PDF context found", "data": {"token": "6d0a05855dd014eb"}, "timestamp": "2025-08-05T09:51:58.598808", "logger": "chat_service"}
+NoneType: None
+2025-08-05 15:21:58 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "9576b6dab1b71217", "topic": null, "count": 25, "mode": "practice"}, "timestamp": "2025-08-05T09:51:58.609030", "logger": "chat_service"}
+2025-08-05 15:21:58 | ERROR | chat_service | error:74 | {"message": "No PDF context found", "data": {"token": "9576b6dab1b71217"}, "timestamp": "2025-08-05T09:51:58.610031", "logger": "chat_service"}
+NoneType: None
+2025-08-05 15:22:04 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "a217a340248aceac", "topic": "", "count": 10, "mode": "quiz"}, "timestamp": "2025-08-05T09:52:04.714154", "logger": "chat_service"}
+2025-08-05 15:22:04 | ERROR | chat_service | error:74 | {"message": "No PDF context found", "data": {"token": "a217a340248aceac"}, "timestamp": "2025-08-05T09:52:04.714154", "logger": "chat_service"}
+NoneType: None
+2025-08-05 15:22:21 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "9a5f21a8e0f5a94e", "topic": "", "count": 10, "mode": "quiz"}, "timestamp": "2025-08-05T09:52:21.515911", "logger": "chat_service"}
+2025-08-05 15:22:21 | ERROR | chat_service | error:74 | {"message": "No PDF context found", "data": {"token": "9a5f21a8e0f5a94e"}, "timestamp": "2025-08-05T09:52:21.515911", "logger": "chat_service"}
+NoneType: None
+2025-08-05 15:30:55 | INFO | chat_service | info:66 | API ROTATION: Using key #9/14 - AIzaSyB2...*******************************
+2025-08-05 15:31:06 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "default_user", "topic": "", "count": 25, "mode": "practice"}, "timestamp": "2025-08-05T10:01:06.257739", "logger": "chat_service"}
+2025-08-05 15:31:06 | INFO | chat_service | info:66 | {"message": "Processing PDF for questions", "data": {"filename": "'How to develop a Super Power Memory' - Mega Brain ( PDFDrive.com ).pdf", "content_length": 319387}, "timestamp": "2025-08-05T10:01:06.257739", "logger": "chat_service"}
+2025-08-05 15:31:06 | INFO | chat_service | info:66 | Sending request to Gemini AI
+2025-08-05 15:31:06 | INFO | chat_service | info:66 | API ROTATION: Using key #10/14 - AIzaSyA8...*******************************
+2025-08-05 15:31:14 | INFO | chat_service | info:66 | Gemini AI response received
+2025-08-05 15:31:14 | INFO | chat_service | info:66 | {"message": "Gemini AI response received", "data": {"response_length": 2462}, "timestamp": "2025-08-05T10:01:14.074769", "logger": "chat_service"}
+2025-08-05 15:31:16 | INFO | chat_service | info:66 | API ROTATION: Using key #11/14 - AIzaSyAu...*******************************
+2025-08-05 15:33:19 | INFO | chat_service | info:66 | API ROTATION: Using key #12/14 - AIzaSyAd...*******************************
+2025-08-05 15:34:17 | INFO | chat_service | info:66 | API ROTATION: Using key #13/14 - AIzaSyA3...*******************************
+2025-08-05 15:34:33 | INFO | chat_service | info:66 | API ROTATION: Using key #14/14 - AIzaSyAR...*******************************
+2025-08-05 15:34:38 | INFO | chat_service | info:66 | API ROTATION: Using key #1/14 - AIzaSyAn...*******************************
+2025-08-05 15:34:43 | INFO | chat_service | info:66 | API ROTATION: Using key #2/14 - AIzaSyAE...*******************************
+2025-08-05 15:34:49 | INFO | chat_service | info:66 | API ROTATION: Using key #3/14 - AIzaSyDM...*******************************
+2025-08-05 15:38:58 | INFO | chat_service | info:66 | API ROTATION: Using key #4/14 - AIzaSyDE...*******************************
+2025-08-05 15:39:36 | INFO | chat_service | info:66 | API ROTATION: Using key #5/14 - AIzaSyBS...*******************************
+2025-08-05 15:39:36 | INFO | chat_service | info:66 | API ROTATION: Using key #6/14 - AIzaSyAB...*******************************
+2025-08-05 15:40:06 | INFO | chat_service | info:66 | API ROTATION: Using key #7/14 - AIzaSyAT...*******************************
+2025-08-05 15:40:30 | INFO | chat_service | info:66 | API ROTATION: Using key #8/14 - AIzaSyCC...*******************************
+2025-08-05 15:40:56 | INFO | chat_service | info:66 | API ROTATION: Using key #9/14 - AIzaSyB2...*******************************
+2025-08-05 15:41:05 | INFO | chat_service | info:66 | API ROTATION: Using key #10/14 - AIzaSyA8...*******************************
+2025-08-05 15:49:11 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "user_af801ca5db4b", "topic": "", "count": 50, "mode": "practice"}, "timestamp": "2025-08-05T10:19:11.277528", "logger": "chat_service"}
+2025-08-05 15:49:11 | INFO | chat_service | info:66 | {"message": "Processing PDF for questions", "data": {"filename": "'How to develop a Super Power Memory' - Mega Brain ( PDFDrive.com ).pdf", "content_length": 319387}, "timestamp": "2025-08-05T10:19:11.277528", "logger": "chat_service"}
+2025-08-05 15:49:11 | INFO | chat_service | info:66 | Sending request to Gemini AI
+2025-08-05 15:49:20 | INFO | chat_service | info:66 | Gemini AI response received
+2025-08-05 15:49:20 | INFO | chat_service | info:66 | {"message": "Gemini AI response received", "data": {"response_length": 3977}, "timestamp": "2025-08-05T10:19:20.207756", "logger": "chat_service"}
+2025-08-05 15:49:20 | INFO | chat_service | info:66 | {"message": "Generating questions", "data": {"token": "user_b3ac87609b21", "topic": "", "count": 50, "mode": "practice"}, "timestamp": "2025-08-05T10:19:20.223872", "logger": "chat_service"}
+2025-08-05 15:49:20 | INFO | chat_service | info:66 | {"message": "Processing PDF for questions", "data": {"filename": "'How to develop a Super Power Memory' - Mega Brain ( PDFDrive.com ).pdf", "content_length": 319387}, "timestamp": "2025-08-05T10:19:20.223872", "logger": "chat_service"}
+2025-08-05 15:49:20 | INFO | chat_service | info:66 | Sending request to Gemini AI
+2025-08-05 15:49:30 | INFO | chat_service | info:66 | Gemini AI response received
+2025-08-05 15:49:30 | INFO | chat_service | info:66 | {"message": "Gemini AI response received", "data": {"response_length": 4046}, "timestamp": "2025-08-05T10:19:30.243040", "logger": "chat_service"}

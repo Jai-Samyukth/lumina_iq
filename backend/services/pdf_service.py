@@ -1,5 +1,4 @@
 import os
-import PyPDF2
 import pdfplumber
 import aiofiles
 from pathlib import Path
@@ -9,78 +8,113 @@ from typing import List
 from config.settings import settings
 from utils.storage import pdf_contexts, pdf_metadata
 from utils.cache import cache_service
+from utils.logger import pdf_logger
 from models.pdf import PDFInfo, PDFListResponse, PDFUploadResponse, PDFMetadata
+import warnings
+
+# Suppress PyPDF2 warnings when it's imported
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="PyPDF2")
+warnings.filterwarnings("ignore", category=UserWarning, module="PyPDF2")
 
 class PDFService:
     @staticmethod
     async def extract_text_from_pdf(file_path: str) -> str:
-        print(f"Processing PDF: {file_path}")
+        pdf_logger.info("Starting PDF text extraction", file_path=file_path)
 
         # Check cache first
         cached_text = await cache_service.get_cached_text(file_path)
         if cached_text is not None:
-            print(f"Using cached text for {file_path} ({len(cached_text)} characters)")
+            pdf_logger.info("Using cached text", file_path=file_path, text_length=len(cached_text))
             return cached_text
 
         # Cache miss - extract text from PDF
         text = ""
-        print(f"Cache miss - extracting text from PDF: {file_path}")
+        pdf_logger.info("Cache miss - extracting text from PDF", file_path=file_path)
 
         try:
+            # Lazy import PyPDF2 only when needed for text extraction
+            import PyPDF2
             with open(file_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)
-                print(f"PDF has {len(pdf_reader.pages)} pages")
+                page_count = len(pdf_reader.pages)
+                pdf_logger.info("PDF loaded successfully", file_path=file_path, pages=page_count)
 
                 for i, page in enumerate(pdf_reader.pages):
                     page_text = page.extract_text()
                     if page_text:
                         text += page_text + "\n"
-                        print(f"Page {i+1}: extracted {len(page_text)} characters")
+                        pdf_logger.debug("Page extracted", page=i+1, text_length=len(page_text))
                     else:
-                        print(f"Page {i+1}: no text extracted")
+                        pdf_logger.debug("Page has no text", page=i+1)
 
         except Exception as e:
-            print(f"PyPDF2 extraction failed: {e}, trying pdfplumber...")
+            pdf_logger.warning("PyPDF2 extraction failed, trying pdfplumber", file_path=file_path, error=str(e))
             # Fallback to pdfplumber
             try:
                 with pdfplumber.open(file_path) as pdf:
-                    print(f"PDF has {len(pdf.pages)} pages (pdfplumber)")
+                    page_count = len(pdf.pages)
+                    pdf_logger.info("PDF loaded with pdfplumber", file_path=file_path, pages=page_count)
 
                     for i, page in enumerate(pdf.pages):
                         page_text = page.extract_text()
                         if page_text:
                             text += page_text + "\n"
-                            print(f"Page {i+1}: extracted {len(page_text)} characters (pdfplumber)")
+                            pdf_logger.debug("Page extracted with pdfplumber", page=i+1, text_length=len(page_text))
                         else:
-                            print(f"Page {i+1}: no text extracted (pdfplumber)")
+                            pdf_logger.debug("Page has no text with pdfplumber", page=i+1)
 
             except Exception as e2:
-                print(f"Both extraction methods failed: PyPDF2={e}, pdfplumber={e2}")
+                pdf_logger.error("Both extraction methods failed", 
+                                file_path=file_path, 
+                                pypdf_error=str(e), 
+                                pdfplumber_error=str(e2))
                 raise HTTPException(status_code=500, detail=f"Failed to extract text from PDF: {str(e2)}")
 
         extracted_text = text.strip()
-        print(f"Total extracted text: {len(extracted_text)} characters")
+        pdf_logger.info("Text extraction completed", 
+                       file_path=file_path, 
+                       extracted_length=len(extracted_text))
 
         if len(extracted_text) < 50:
-            print("Warning: Very little text extracted from PDF")
-            print(f"Extracted content: '{extracted_text[:100]}'")
+            pdf_logger.warning("Very little text extracted", 
+                             file_path=file_path, 
+                             extracted_length=len(extracted_text),
+                             preview=extracted_text[:100])
 
         # Save to cache for future use
         cache_saved = await cache_service.save_to_cache(file_path, extracted_text)
         if cache_saved:
-            print(f"Successfully cached extracted text for {file_path}")
+            pdf_logger.info("Successfully cached extracted text", file_path=file_path)
         else:
-            print(f"Failed to cache extracted text for {file_path}")
+            pdf_logger.warning("Failed to cache extracted text", file_path=file_path)
 
         return extracted_text
 
     @staticmethod
-    async def get_pdf_metadata(file_path: str) -> dict:
+    async def get_pdf_metadata(file_path: str, extract_full_metadata: bool = False) -> dict:
+        """Get PDF metadata. If extract_full_metadata is False, only get basic file info without using PyPDF2"""
+        basic_metadata = {
+            "title": Path(file_path).stem,  # Use filename as title
+            "author": "Unknown", 
+            "subject": "Unknown",
+            "creator": "Unknown",
+            "producer": "Unknown",
+            "creation_date": "Unknown",
+            "modification_date": "Unknown",
+            "pages": 0,  # Will be set to unknown for basic metadata
+            "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else 0
+        }
+        
+        if not extract_full_metadata:
+            return basic_metadata
+            
+        # Only use PyPDF2 when full metadata is explicitly requested
         try:
+            import PyPDF2
             with open(file_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)
                 metadata = {
-                    "title": pdf_reader.metadata.get('/Title', 'Unknown') if pdf_reader.metadata else 'Unknown',
+                    "title": pdf_reader.metadata.get('/Title', basic_metadata["title"]) if pdf_reader.metadata else basic_metadata["title"],
                     "author": pdf_reader.metadata.get('/Author', 'Unknown') if pdf_reader.metadata else 'Unknown',
                     "subject": pdf_reader.metadata.get('/Subject', 'Unknown') if pdf_reader.metadata else 'Unknown',
                     "creator": pdf_reader.metadata.get('/Creator', 'Unknown') if pdf_reader.metadata else 'Unknown',
@@ -92,17 +126,8 @@ class PDFService:
                 }
                 return metadata
         except Exception as e:
-            return {
-                "title": "Unknown",
-                "author": "Unknown", 
-                "subject": "Unknown",
-                "creator": "Unknown",
-                "producer": "Unknown",
-                "creation_date": "Unknown",
-                "modification_date": "Unknown",
-                "pages": 0,
-                "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else 0
-            }
+            pdf_logger.warning("Failed to extract full metadata", file_path=file_path, error=str(e))
+            return basic_metadata
 
     @staticmethod
     async def list_pdfs(offset: int = 0, limit: int = 20, search: str = None) -> PDFListResponse:
@@ -112,11 +137,12 @@ class PDFService:
             books_dir.mkdir(exist_ok=True)
             return PDFListResponse(items=[], total=0, offset=offset, limit=limit)
 
-        # Get all PDFs first
+        # Get all PDFs first - use basic metadata only (no PyPDF2)
         all_pdfs = []
         for file_path in books_dir.glob("*.pdf"):
             try:
-                metadata = await PDFService.get_pdf_metadata(str(file_path))
+                # Only get basic metadata without using PyPDF2 for listing
+                metadata = await PDFService.get_pdf_metadata(str(file_path), extract_full_metadata=False)
                 pdf_info = PDFInfo(
                     filename=file_path.name,
                     title=metadata.get("title", "Unknown"),
@@ -168,7 +194,7 @@ class PDFService:
         try:
             # Extract text and metadata
             text_content = await PDFService.extract_text_from_pdf(str(file_path))
-            metadata = await PDFService.get_pdf_metadata(str(file_path))
+            metadata = await PDFService.get_pdf_metadata(str(file_path), extract_full_metadata=True)
             
             # Store in session
             pdf_contexts[token] = {

@@ -13,12 +13,19 @@ logger = logging.getLogger(__name__)
 class AuthService:
     @staticmethod
     def login(request: LoginRequest) -> LoginResponse:
-        logger.info(f"Login attempt for username: {request.username}")
+        logger.info(f"=== LOGIN ATTEMPT DEBUG ===")
+        logger.info(f"Received username: '{request.username}' (length: {len(request.username)})")
+        logger.info(f"Received password: '{request.password}' (length: {len(request.password)})")
+        logger.info(f"Expected username: '{settings.LOGIN_USERNAME}' (length: {len(settings.LOGIN_USERNAME)})")
+        logger.info(f"Expected password: '{settings.LOGIN_PASSWORD}' (length: {len(settings.LOGIN_PASSWORD)})")
+        logger.info(f"Username match: {request.username == settings.LOGIN_USERNAME}")
+        logger.info(f"Password match: {request.password == settings.LOGIN_PASSWORD}")
+        logger.info(f"=== END DEBUG ===")
 
         if (request.username == settings.LOGIN_USERNAME and
             request.password == settings.LOGIN_PASSWORD):
 
-            logger.info("Login successful - credentials match")
+            logger.info("✅ Login successful - credentials match")
 
             # Create a simple session ID for tracking (optional)
             session_id = create_session_id()
@@ -34,7 +41,7 @@ class AuthService:
                 message="Login successful"
             )
         else:
-            logger.warning("Login failed - invalid credentials")
+            logger.warning("❌ Login failed - invalid credentials")
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
     @staticmethod
