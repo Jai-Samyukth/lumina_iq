@@ -113,9 +113,25 @@ export interface PDFSessionInfo {
   metadata: PDFMetadata;
 }
 
+export interface PDFListResponse {
+  items: PDFInfo[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export const pdfApi = {
-  async listPDFs(): Promise<{ pdfs: PDFInfo[] }> {
-    const response = await api.get('/pdf/list');
+  async listPDFs(offset: number = 0, limit: number = 20, search?: string): Promise<PDFListResponse> {
+    const params = new URLSearchParams({
+      offset: offset.toString(),
+      limit: limit.toString(),
+    });
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    const response = await api.get(`/pdf/list?${params.toString()}`);
     return response.data;
   },
 

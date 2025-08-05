@@ -1,42 +1,108 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { pdfApi, PDFInfo } from '@/lib/api';
 import { FileText, AlertCircle, LogOut, BookOpen, Book, User, FileIcon, MessageSquare } from 'lucide-react';
+import Image from 'next/image';
 
 export default function UploadPage() {
   const [error, setError] = useState('');
   const [availablePDFs, setAvailablePDFs] = useState<PDFInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+
+  // Pagination state
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const limit = 20;
+
+  // Refs for infinite scroll
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const { logout, user } = useAuth();
   const router = useRouter();
 
-  // Filter PDFs based on search term
-  const filteredPDFs = availablePDFs.filter(pdf =>
-    pdf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pdf.filename.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+  // When search term changes, reset and reload
   useEffect(() => {
-    loadAvailablePDFs();
+    setAvailablePDFs([]);
+    setCurrentOffset(0);
+    setHasMore(true);
+    loadAvailablePDFs(0, searchTerm);
+  }, [searchTerm]);
+
+  // Initial load
+  useEffect(() => {
+    loadAvailablePDFs(0);
   }, []);
 
-  const loadAvailablePDFs = async () => {
+  const loadAvailablePDFs = async (offset: number = 0, search?: string) => {
     try {
-      setLoading(true);
-      const result = await pdfApi.listPDFs();
-      setAvailablePDFs(result.pdfs);
+      if (offset === 0) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const result = await pdfApi.listPDFs(offset, limit, search || searchTerm);
+
+      if (offset === 0) {
+        // First load or search - replace all items
+        setAvailablePDFs(result.items);
+      } else {
+        // Infinite scroll - append items
+        setAvailablePDFs(prev => [...prev, ...result.items]);
+      }
+
+      setTotal(result.total);
+      setCurrentOffset(offset + result.items.length);
+      setHasMore(result.items.length === limit && (offset + result.items.length) < result.total);
+
     } catch (err: any) {
       setError('Failed to load available PDFs');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  // Load more items when intersection observer triggers
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      loadAvailablePDFs(currentOffset);
+    }
+  }, [loadingMore, hasMore, currentOffset]);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loadMore]);
 
   const handleSelectPDF = async (filename: string) => {
     try {
@@ -134,7 +200,7 @@ export default function UploadPage() {
                 <div className="animate-spin rounded-full h-12 w-12 lg:h-16 lg:w-16 border-4 border-terracotta border-t-transparent mx-auto mb-4 lg:mb-6"></div>
                 <p className="text-base lg:text-lg font-medium text-olive-green">Loading your PDF library...</p>
               </div>
-            ) : filteredPDFs.length === 0 ? (
+            ) : availablePDFs.length === 0 ? (
               /* Empty State */
               <div className="text-center py-12 lg:py-16">
                 <div className="p-4 lg:p-6 rounded-full w-16 h-16 lg:w-20 lg:h-20 mx-auto flex items-center justify-center mb-4 lg:mb-6 bg-terracotta/20">
@@ -151,9 +217,19 @@ export default function UploadPage() {
                 </p>
               </div>
             ) : (
-              /* PDF List */
-              <div className="space-y-3 lg:space-y-4 max-h-80 lg:max-h-96 overflow-y-auto pr-2 book-list-scroll">
-                {filteredPDFs.map((pdf) => (
+              /* PDF List with Infinite Scroll */
+              <div className="space-y-3 lg:space-y-4">
+                {/* Show total count */}
+                {total > 0 && (
+                  <div className="text-sm text-muted-sage mb-4">
+                    Showing {availablePDFs.length} of {total} books
+                    {searchTerm && ` matching "${searchTerm}"`}
+                  </div>
+                )}
+
+                {/* PDF Items */}
+                <div className="space-y-3 lg:space-y-4">
+                  {availablePDFs.map((pdf) => (
                   <div
                     key={pdf.filename}
                     className="border-2 border-sandy-beige bg-cream/60 rounded-xl lg:rounded-2xl p-3 lg:p-4 cursor-pointer transition-all duration-200 hover:border-terracotta hover:shadow-lg hover:-translate-y-1 hover:bg-cream/80"
@@ -169,8 +245,20 @@ export default function UploadPage() {
                     }}
                   >
                     <div className="flex items-center space-x-3 lg:space-x-4">
-                      <div className="p-2 lg:p-3 rounded-lg lg:rounded-xl flex-shrink-0 bg-terracotta/20">
-                        <FileIcon className="h-5 w-5 lg:h-6 lg:w-6 text-terracotta" />
+                      {/* Book Cover Placeholder with Lazy Loading */}
+                      <div className="relative w-12 h-16 lg:w-16 lg:h-20 flex-shrink-0 rounded-lg lg:rounded-xl overflow-hidden bg-terracotta/20">
+                        {/* Future: Replace with actual book cover when available */}
+                        {/* <Image
+                          src={pdf.cover_url || '/default-book-cover.jpg'}
+                          alt={`Cover of ${pdf.title}`}
+                          fill
+                          className="object-cover"
+                          loading="lazy"
+                          sizes="(max-width: 768px) 48px, 64px"
+                        /> */}
+                        <div className="w-full h-full flex items-center justify-center">
+                          <FileIcon className="h-5 w-5 lg:h-6 lg:w-6 text-terracotta" />
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base lg:text-lg font-bold mb-1 text-olive-green line-clamp-2">
@@ -203,7 +291,32 @@ export default function UploadPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  ))}
+                </div>
+
+                {/* Infinite Scroll Trigger */}
+                {hasMore && (
+                  <div
+                    ref={loadMoreRef}
+                    className="flex justify-center py-6"
+                  >
+                    {loadingMore ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-terracotta border-t-transparent"></div>
+                        <span className="text-muted-sage">Loading more books...</span>
+                      </div>
+                    ) : (
+                      <div className="text-muted-sage text-sm">Scroll down for more books</div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of results indicator */}
+                {!hasMore && availablePDFs.length > 0 && (
+                  <div className="text-center py-4 text-muted-sage text-sm">
+                    You've reached the end of your library
+                  </div>
+                )}
               </div>
             )}
 

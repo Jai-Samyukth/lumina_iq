@@ -105,14 +105,15 @@ class PDFService:
             }
 
     @staticmethod
-    async def list_pdfs() -> PDFListResponse:
-        """List all PDFs in the books folder"""
+    async def list_pdfs(offset: int = 0, limit: int = 20, search: str = None) -> PDFListResponse:
+        """List PDFs in the books folder with pagination and optional search"""
         books_dir = Path(settings.BOOKS_DIR)
         if not books_dir.exists():
             books_dir.mkdir(exist_ok=True)
-            return PDFListResponse(pdfs=[])
-        
-        pdfs = []
+            return PDFListResponse(items=[], total=0, offset=offset, limit=limit)
+
+        # Get all PDFs first
+        all_pdfs = []
         for file_path in books_dir.glob("*.pdf"):
             try:
                 metadata = await PDFService.get_pdf_metadata(str(file_path))
@@ -124,12 +125,33 @@ class PDFService:
                     file_size=metadata.get("file_size", 0),
                     file_path=str(file_path)
                 )
-                pdfs.append(pdf_info)
+                all_pdfs.append(pdf_info)
             except Exception as e:
                 # Skip files that can't be processed
                 continue
-        
-        return PDFListResponse(pdfs=pdfs)
+
+        # Apply search filter if provided
+        if search:
+            search_lower = search.lower()
+            filtered_pdfs = [
+                pdf for pdf in all_pdfs
+                if search_lower in pdf.title.lower() or search_lower in pdf.filename.lower()
+            ]
+        else:
+            filtered_pdfs = all_pdfs
+
+        # Apply pagination
+        total = len(filtered_pdfs)
+        start_idx = offset
+        end_idx = offset + limit
+        paginated_pdfs = filtered_pdfs[start_idx:end_idx]
+
+        return PDFListResponse(
+            items=paginated_pdfs,
+            total=total,
+            offset=offset,
+            limit=limit
+        )
 
     @staticmethod
     async def select_pdf(filename: str, token: str) -> dict:

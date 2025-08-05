@@ -1,7 +1,8 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from models.pdf import PDFListResponse, PDFSelectRequest, PDFUploadResponse
 from services.pdf_service import PDFService
 from utils.cache import cache_service
+from typing import Optional
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 
@@ -9,9 +10,13 @@ router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 DEFAULT_SESSION = "default_user"
 
 @router.get("/list", response_model=PDFListResponse)
-async def list_pdfs():
-    """List all PDFs available in the books folder"""
-    return await PDFService.list_pdfs()
+async def list_pdfs(
+    offset: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items to return (max 100)"),
+    search: Optional[str] = Query(None, description="Search term to filter PDFs by title or filename")
+):
+    """List PDFs available in the books folder with pagination and optional search"""
+    return await PDFService.list_pdfs(offset=offset, limit=limit, search=search)
 
 @router.post("/select")
 async def select_pdf(request: PDFSelectRequest):

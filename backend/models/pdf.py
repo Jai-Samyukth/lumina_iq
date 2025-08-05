@@ -10,7 +10,10 @@ class PDFInfo(BaseModel):
     file_path: str
 
 class PDFListResponse(BaseModel):
-    pdfs: List[PDFInfo]
+    items: List[PDFInfo]  # Changed from 'pdfs' to 'items' for consistency
+    total: int
+    offset: int
+    limit: int
 
 class PDFSelectRequest(BaseModel):
     filename: str
