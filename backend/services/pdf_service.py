@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import HTTPException, UploadFile
 from typing import List
 from config.settings import settings
-from utils.storage import pdf_contexts, pdf_metadata
+from utils.storage import pdf_contexts, pdf_metadata, storage_manager, storage_manager
 from utils.cache import cache_service
 from utils.logger import pdf_logger
 from models.pdf import PDFInfo, PDFListResponse, PDFUploadResponse, PDFMetadata
@@ -196,13 +196,13 @@ class PDFService:
             text_content = await PDFService.extract_text_from_pdf(str(file_path))
             metadata = await PDFService.get_pdf_metadata(str(file_path), extract_full_metadata=True)
             
-            # Store in session
-            pdf_contexts[token] = {
+            # Store in session thread-safely
+            storage_manager.safe_set(pdf_contexts, token, {
                 "filename": filename,
                 "content": text_content,
                 "selected_at": datetime.now().isoformat()
-            }
-            pdf_metadata[token] = metadata
+            })
+            storage_manager.safe_set(pdf_metadata, token, metadata)
             
             return {
                 "message": "PDF selected successfully",
@@ -235,13 +235,13 @@ class PDFService:
             text_content = await PDFService.extract_text_from_pdf(str(file_path))
             metadata = await PDFService.get_pdf_metadata(str(file_path))
 
-            # Store in memory (replace with database in production)
-            pdf_contexts[token] = {
+            # Store in memory thread-safely (replace with database in production)
+            storage_manager.safe_set(pdf_contexts, token, {
                 "filename": file.filename,
                 "content": text_content,
                 "uploaded_at": datetime.now().isoformat()
-            }
-            pdf_metadata[token] = metadata
+            })
+            storage_manager.safe_set(pdf_metadata, token, metadata)
 
             return PDFUploadResponse(
                 message="PDF uploaded and processed successfully",

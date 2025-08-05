@@ -40,7 +40,7 @@ class Settings:
         return list(set(origins))  # Remove duplicates
     
     # File paths
-    BOOKS_DIR = r"S:\software\PDFFiles"
+    BOOKS_DIR = r"D:\Projects\learning\books"
     CACHE_DIR = 'cache'
     
     # Session

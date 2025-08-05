@@ -34,7 +34,12 @@ def main():
             host=settings.HOST,
             port=settings.PORT,
             reload=True,
-            log_level="info"
+            log_level="info",
+            workers=1,  # Single worker for development with reload
+            # Basic optimizations for development
+            backlog=2048,
+            timeout_keep_alive=5,
+            limit_concurrency=500
         )
     except KeyboardInterrupt:
         print("\n👋 Server stopped by user")

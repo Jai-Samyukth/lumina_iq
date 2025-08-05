@@ -2,7 +2,7 @@ import google.generativeai as genai
 from datetime import datetime
 from fastapi import HTTPException
 from config.settings import settings
-from utils.storage import pdf_contexts, chat_histories
+from utils.storage import pdf_contexts, chat_histories, storage_manager
 from models.chat import (
     ChatMessage,
     ChatResponse,
@@ -26,18 +26,24 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 try:
     from api_rotation.api_key_rotator import api_key_rotator
     ROTATION_ENABLED = True
-    logging.info("API key rotation enabled")
+    # Only log once per module import to avoid duplicate logs with multiple workers
+    if not hasattr(chat_logger, '_rotation_logged'):
+        chat_logger.info("API key rotation enabled")
+        chat_logger._rotation_logged = True
 except ImportError as e:
-    logging.warning(f"API key rotation not available: {e}")
+    if not hasattr(chat_logger, '_rotation_error_logged'):
+        chat_logger.warning(f"API key rotation not available: {e}")
+        chat_logger._rotation_error_logged = True
     ROTATION_ENABLED = False
 
 # Thread-safe locks for concurrent access
-storage_lock = Lock()
+from collections import defaultdict
+user_locks = defaultdict(Lock)  # Per-user locks for better concurrency
 model_cache = {}
 model_cache_lock = Lock()
 
-# Thread pool for CPU-bound operations
-thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+# Thread pool for CPU-bound operations - increased workers for better concurrency
+thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 def get_rotated_model():
     """
@@ -66,47 +72,71 @@ def get_rotated_model():
             model_cache[api_key] = genai.GenerativeModel(settings.GEMINI_MODEL)
         return model_cache[api_key]
 
-async def generate_content_async(model, context: str) -> str:
+async def generate_content_async(model, context: str, max_retries: int = 3) -> str:
     """
     Generate content asynchronously using thread pool to avoid blocking.
+    Includes retry logic for better reliability.
     """
     loop = asyncio.get_event_loop()
-    try:
-        # Run the blocking generate_content in a thread pool
-        response = await loop.run_in_executor(
-            thread_pool,
-            lambda: model.generate_content(context)
-        )
-        return response.text
-    except Exception as e:
-        chat_logger.error(f"Error generating AI response: {str(e)}")
-        raise
 
-def safe_storage_access(operation, *args, **kwargs):
+    for attempt in range(max_retries):
+        try:
+            # Run the blocking generate_content in a thread pool
+            response = await loop.run_in_executor(
+                thread_pool,
+                lambda: model.generate_content(context)
+            )
+            if response and response.text:
+                return response.text.strip()
+            else:
+                raise Exception("Empty response from AI model")
+
+        except Exception as e:
+            chat_logger.warning(f"AI generation attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                chat_logger.error(f"All {max_retries} AI generation attempts failed: {str(e)}")
+                raise
+            # Wait a bit before retrying
+            await asyncio.sleep(0.5 * (attempt + 1))
+
+    raise Exception("Failed to generate AI response after all retries")
+
+def safe_storage_access(operation, token: str, *args, **kwargs):
     """
-    Thread-safe wrapper for storage operations.
+    Thread-safe wrapper for storage operations using per-user locks.
+    This allows multiple users to access their data concurrently.
+    Uses the optimized storage manager for better performance.
     """
-    with storage_lock:
+    with storage_manager.get_user_lock(token):
         return operation(*args, **kwargs)
 
 class ChatService:
     @staticmethod
     async def chat(message: ChatMessage, token: str) -> ChatResponse:
-        # Thread-safe check for PDF context
+        # Thread-safe check for PDF context with better error handling
         def check_pdf_context():
             if token not in pdf_contexts:
+                chat_logger.error(f"No PDF context found for token: {token}")
                 raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
-            return pdf_contexts[token]
-        
-        pdf_context = safe_storage_access(check_pdf_context)
+            context = pdf_contexts[token]
+            if not context or 'content' not in context:
+                chat_logger.error(f"Invalid PDF context for token: {token}")
+                raise HTTPException(status_code=400, detail="PDF context is invalid. Please select a PDF again.")
+            return context
+
+        try:
+            pdf_context = safe_storage_access(check_pdf_context, token)
+        except Exception as e:
+            chat_logger.error(f"Error accessing PDF context for token {token}: {str(e)}")
+            raise
 
         # Thread-safe initialization of chat history
         def init_chat_history():
             if token not in chat_histories:
                 chat_histories[token] = []
             return chat_histories[token]
-        
-        chat_history = safe_storage_access(init_chat_history)
+
+        chat_history = safe_storage_access(init_chat_history, token)
 
         # Check if this is a Q&A generation request (needs full content)
         is_qa_generation = any(keyword in message.message.lower() for keyword in [
@@ -123,8 +153,8 @@ class ChatService:
         # Get recent chat history safely
         def get_recent_history():
             return chat_histories[token][-3:] if token in chat_histories else []
-        
-        recent_history = safe_storage_access(get_recent_history)
+
+        recent_history = safe_storage_access(get_recent_history, token)
 
         # Prepare context for Gemini
         context = f"""
@@ -146,6 +176,10 @@ class ChatService:
             rotated_model = get_rotated_model()
             ai_response = await generate_content_async(rotated_model, context)
 
+            # Validate response
+            if not ai_response or len(ai_response.strip()) < 10:
+                raise Exception("AI response too short or empty")
+
             # Store in chat history thread-safely
             def store_chat_entry():
                 chat_histories[token].append({
@@ -153,30 +187,59 @@ class ChatService:
                     "assistant": ai_response,
                     "timestamp": datetime.now().isoformat()
                 })
-            
-            safe_storage_access(store_chat_entry)
 
+            safe_storage_access(store_chat_entry, token)
+
+            chat_logger.info(f"Successfully generated response for token {token}, length: {len(ai_response)}")
             return ChatResponse(
                 response=ai_response,
                 timestamp=datetime.now().isoformat()
             )
 
+        except HTTPException:
+            # Re-raise HTTP exceptions as-is
+            raise
         except Exception as e:
             chat_logger.error(f"Failed to generate response for token {token}: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to generate response: {str(e)}")
+
+            # Provide a fallback response instead of failing completely
+            fallback_response = f"I apologize, but I'm having trouble processing your question about the document '{pdf_context.get('filename', 'the selected PDF')}' right now. Please try rephrasing your question or try again in a moment."
+
+            # Store fallback in chat history
+            def store_fallback_entry():
+                chat_histories[token].append({
+                    "user": message.message,
+                    "assistant": fallback_response,
+                    "timestamp": datetime.now().isoformat()
+                })
+
+            try:
+                safe_storage_access(store_fallback_entry, token)
+            except:
+                pass  # Don't fail if we can't store the fallback
+
+            return ChatResponse(
+                response=fallback_response,
+                timestamp=datetime.now().isoformat()
+            )
 
     @staticmethod
     def get_chat_history(token: str) -> dict:
-        if token not in chat_histories:
-            return {"history": []}
+        def get_history():
+            if token not in chat_histories:
+                return {"history": []}
+            return {"history": chat_histories[token]}
 
-        return {"history": chat_histories[token]}
-    
+        return safe_storage_access(get_history, token)
+
     @staticmethod
     def clear_chat_history(token: str) -> dict:
-        if token in chat_histories:
-            chat_histories[token] = []
-        return {"message": "Chat history cleared"}
+        def clear_history():
+            if token in chat_histories:
+                chat_histories[token] = []
+            return {"message": "Chat history cleared"}
+
+        return safe_storage_access(clear_history, token)
 
     @staticmethod
     async def generate_questions(token: str, topic: str = None, count: int = 25, mode: str = "practice") -> ChatResponse:
@@ -186,12 +249,14 @@ class ChatService:
                         count=count, 
                         mode=mode)
         
-        # Get PDF context
-        if token not in pdf_contexts:
-            chat_logger.error("No PDF context found", token=token)
-            raise HTTPException(status_code=400, detail="No PDF selected")
-        
-        pdf_context = pdf_contexts[token]
+        # Get PDF context thread-safely
+        def get_pdf_context():
+            if token not in pdf_contexts:
+                chat_logger.error("No PDF context found", token=token)
+                raise HTTPException(status_code=400, detail="No PDF selected")
+            return pdf_contexts[token]
+
+        pdf_context = safe_storage_access(get_pdf_context, token)
         full_content = pdf_context['content']
         
         chat_logger.info("Processing PDF for questions", 
@@ -304,17 +369,17 @@ class ChatService:
         """
 
         try:
-            # Generate response using Gemini with rotated API key
+            # Generate response using async Gemini with rotated API key
             chat_logger.info("Sending request to Gemini AI")
             rotated_model = get_rotated_model()
-            response = rotated_model.generate_content(context)
+            ai_response = await generate_content_async(rotated_model, context)
             chat_logger.info("Gemini AI response received")
 
-            if not response or not response.text:
+            if not ai_response:
                 chat_logger.error("No response from Gemini AI")
                 raise HTTPException(status_code=500, detail="No response from AI")
 
-            ai_response = response.text.strip()
+            ai_response = ai_response.strip()
             chat_logger.info("Gemini AI response received", 
                            response_length=len(ai_response))
 
@@ -375,10 +440,12 @@ class ChatService:
     @staticmethod
     async def evaluate_answer(request: AnswerEvaluationRequest, token: str) -> AnswerEvaluationResponse:
         """Evaluate a single user answer using AI"""
-        if token not in pdf_contexts:
-            raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+        def get_pdf_context():
+            if token not in pdf_contexts:
+                raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+            return pdf_contexts[token]
 
-        pdf_context = pdf_contexts[token]
+        pdf_context = safe_storage_access(get_pdf_context, token)
 
         # Get evaluation level settings
         evaluation_level = request.evaluation_level or "medium"
@@ -472,8 +539,7 @@ class ChatService:
 
         try:
             rotated_model = get_rotated_model()
-            response = rotated_model.generate_content(evaluation_context)
-            ai_response = response.text
+            ai_response = await generate_content_async(rotated_model, evaluation_context)
 
             # Try to extract JSON from the response
             import json
@@ -510,10 +576,12 @@ class ChatService:
     @staticmethod
     async def evaluate_quiz(request: QuizSubmissionRequest, token: str) -> QuizSubmissionResponse:
         """Evaluate a complete quiz submission"""
-        if token not in pdf_contexts:
-            raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+        def get_pdf_context():
+            if token not in pdf_contexts:
+                raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+            return pdf_contexts[token]
 
-        pdf_context = pdf_contexts[token]
+        pdf_context = safe_storage_access(get_pdf_context, token)
 
         # Evaluate each answer individually
         individual_results = []
@@ -545,8 +613,8 @@ class ChatService:
                     """
 
                     rotated_model = get_rotated_model()
-                    explanation_response = rotated_model.generate_content(explanation_context)
-                    correct_answer_explanation = explanation_response.text.strip() if explanation_response and explanation_response.text else f"Option {correct_answer_clean} is the correct answer according to the document."
+                    explanation_response = await generate_content_async(rotated_model, explanation_context)
+                    correct_answer_explanation = explanation_response.strip() if explanation_response else f"Option {correct_answer_clean} is the correct answer according to the document."
 
                 except Exception as e:
                     print(f"Error getting answer explanation: {e}")
@@ -657,8 +725,7 @@ class ChatService:
 
         try:
             rotated_model = get_rotated_model()
-            response = rotated_model.generate_content(overall_context)
-            ai_response = response.text
+            ai_response = await generate_content_async(rotated_model, overall_context)
 
             # Parse AI response
             import json

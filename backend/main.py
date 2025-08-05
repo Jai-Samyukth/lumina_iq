@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from config.settings import settings
 from routes import auth, pdf, chat
+from utils.logging_config import configure_logging
 import asyncio
 import platform
+import logging
+import os
 
 # Windows-compatible async optimizations
 if platform.system() == "Windows":
@@ -21,10 +24,14 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Starting Learning App API...")
+    # Configure logging to prevent duplicates in multi-worker setup
+    worker_id = configure_logging()
+    if worker_id == '1':  # Only log from first worker
+        print("Starting Learning App API...")
     yield
     # Shutdown
-    print("Shutting down Learning App API...")
+    if worker_id == '1':  # Only log from first worker
+        print("Shutting down Learning App API...")
 
 app = FastAPI(
     title="Learning App API", 

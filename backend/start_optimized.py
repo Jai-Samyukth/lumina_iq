@@ -40,21 +40,24 @@ def main():
         except ImportError:
             print("⚠️  uvloop not available, using default event loop")
     
-    # Start the server with optimized configuration
+    # Start the server with optimized configuration for concurrency
     uvicorn.run(
         "main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=True,  # Enable for development
-        workers=1,    # Single worker for development
+        reload=False,  # Disable reload for better performance with multiple workers
+        workers=4,     # Multiple workers for true concurrency
         loop="asyncio",  # Windows compatible
         access_log=True,
         log_level="info",
-        # Performance optimizations
-        backlog=2048,  # Increase connection backlog
-        timeout_keep_alive=5,  # Keep connections alive longer
-        limit_concurrency=1000,  # Max concurrent connections
-        limit_max_requests=10000,  # Max requests per worker
+        # Performance optimizations for concurrency
+        backlog=4096,  # Increase connection backlog for more concurrent connections
+        timeout_keep_alive=10,  # Keep connections alive longer to reduce overhead
+        limit_concurrency=2000,  # Increased max concurrent connections
+        limit_max_requests=50000,  # Increased max requests per worker
+        # Additional optimizations
+        timeout_graceful_shutdown=30,  # Graceful shutdown timeout
+        h11_max_incomplete_event_size=16384,  # Increase buffer size
     )
 
 if __name__ == "__main__":

@@ -54,3 +54,19 @@ NoneType: None
 2025-08-05 15:49:20 | INFO | chat_service | info:66 | Sending request to Gemini AI
 2025-08-05 15:49:30 | INFO | chat_service | info:66 | Gemini AI response received
 2025-08-05 15:49:30 | INFO | chat_service | info:66 | {"message": "Gemini AI response received", "data": {"response_length": 4046}, "timestamp": "2025-08-05T10:19:30.243040", "logger": "chat_service"}
+2025-08-05 21:50:08 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:08 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:08 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:08 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:35 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:35 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:35 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:50:35 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:51:05 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:51:05 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:51:05 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:51:05 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:53:16 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:53:16 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:53:16 | INFO | chat_service | info:66 | API key rotation enabled
+2025-08-05 21:53:16 | INFO | chat_service | info:66 | API key rotation enabled
