@@ -91,3 +91,34 @@ async def get_api_rotation_status():
         "stats": stats,
         "message": f"API rotation active with {stats['total_keys']} keys"
     }
+
+@router.get("/performance-stats")
+async def get_performance_stats():
+    """Get current performance statistics for monitoring 25+ concurrent users"""
+    from services.chat_service import request_times, request_times_lock, ai_generation_pool, model_creation_pool
+    import statistics
+
+    with request_times_lock:
+        if request_times:
+            avg_time = statistics.mean(request_times)
+            min_time = min(request_times)
+            max_time = max(request_times)
+            recent_requests = len(request_times)
+        else:
+            avg_time = min_time = max_time = recent_requests = 0
+
+    return {
+        "performance": {
+            "avg_response_time": round(avg_time, 2),
+            "min_response_time": round(min_time, 2),
+            "max_response_time": round(max_time, 2),
+            "recent_requests": recent_requests
+        },
+        "thread_pools": {
+            "ai_generation_active": ai_generation_pool._threads,
+            "ai_generation_max": ai_generation_pool._max_workers,
+            "model_creation_active": model_creation_pool._threads,
+            "model_creation_max": model_creation_pool._max_workers
+        },
+        "status": "optimized_for_25_plus_users"
+    }

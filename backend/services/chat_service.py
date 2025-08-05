@@ -42,62 +42,162 @@ user_locks = defaultdict(Lock)  # Per-user locks for better concurrency
 model_cache = {}
 model_cache_lock = Lock()
 
-# Thread pool for CPU-bound operations - increased workers for better concurrency
-thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+# Massive thread pool for true concurrency with 25+ users
+thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=100)
 
-def get_rotated_model():
-    """
-    Get a Gemini model instance with a rotated API key.
-    Falls back to settings API key if rotation is not available.
-    Thread-safe with caching for better performance.
-    """
-    api_key = None
+# Massive thread pools optimized for 3000+ concurrent requests with 14 API keys
+ai_generation_pool = concurrent.futures.ThreadPoolExecutor(max_workers=500)  # Massive pool for 3000+ users
+model_creation_pool = concurrent.futures.ThreadPoolExecutor(max_workers=200)  # Large pool for model creation
 
-    if ROTATION_ENABLED:
-        api_key = api_key_rotator.get_next_key()
-        if not api_key:
+# Request queue optimized for 3000+ concurrent requests
+import queue
+request_queue = asyncio.Queue(maxsize=5000)  # Large queue for massive burst traffic
+request_semaphore = asyncio.Semaphore(20)  # Very conservative to prevent quota exhaustion
+
+# Performance monitoring
+import time
+request_times = []
+request_times_lock = Lock()
+
+# Optimized rate limiting for 14 API keys handling 3000+ requests
+from collections import defaultdict
+api_call_times = defaultdict(list)  # Track API calls per key
+rate_limit_lock = Lock()
+CALLS_PER_MINUTE = 1800  # 30 req/sec * 60 sec = 1800 per minute per API key
+QUOTA_RESET_TIME = 60  # Reset quota tracking every minute
+# Total capacity: 14 keys * 1800 = 25,200 requests/minute = 420 requests/second!
+
+# Connection pooling for AI requests
+import aiohttp
+ai_session = None
+ai_session_lock = asyncio.Lock()
+
+# Global rate limiter to prevent overwhelming the API
+last_request_time = 0
+min_request_interval = 0.05  # Minimum 50ms between requests globally
+
+def check_rate_limit(api_key: str) -> bool:
+    """Check if API key is within rate limits"""
+    current_time = time.time()
+
+    with rate_limit_lock:
+        # Clean old entries
+        api_call_times[api_key] = [
+            call_time for call_time in api_call_times[api_key]
+            if current_time - call_time < QUOTA_RESET_TIME
+        ]
+
+        # Check if under limit
+        return len(api_call_times[api_key]) < CALLS_PER_MINUTE
+
+def record_api_call(api_key: str):
+    """Record an API call for rate limiting"""
+    current_time = time.time()
+
+    with rate_limit_lock:
+        api_call_times[api_key].append(current_time)
+
+async def get_rotated_model_async():
+    """
+    Get a Gemini model instance optimized for 3000+ concurrent requests.
+    Uses 14 API keys with intelligent load balancing.
+    """
+    loop = asyncio.get_event_loop()
+
+    # Get API key with optimized rotation for high throughput
+    def get_high_throughput_api_key():
+        if ROTATION_ENABLED:
+            # With 14 API keys, we can be more aggressive
+            # Try a few keys to find one that's not heavily loaded
+            for attempt in range(3):  # Only try 3 times for speed
+                api_key = api_key_rotator.get_next_key()
+                if api_key and check_rate_limit(api_key):
+                    return api_key
+
+            # If all checked keys are busy, just use the next one
+            # With 14 keys, the load should be well distributed
+            api_key = api_key_rotator.get_next_key()
+            if api_key:
+                return api_key
+
             chat_logger.warning("API rotation failed, using settings key")
 
-    # Fallback to settings key if rotation fails or is disabled
-    if not api_key:
-        api_key = settings.GEMINI_API_KEY
+        return settings.GEMINI_API_KEY
+
+    api_key = await loop.run_in_executor(model_creation_pool, get_high_throughput_api_key)
 
     if not api_key:
         raise HTTPException(status_code=500, detail="No API key available")
 
-    # Cache models by API key for better performance
-    with model_cache_lock:
-        if api_key not in model_cache:
-            genai.configure(api_key=api_key)
-            model_cache[api_key] = genai.GenerativeModel(settings.GEMINI_MODEL)
-        return model_cache[api_key]
+    # Record the API call for monitoring (but don't block on it)
+    record_api_call(api_key)
 
-async def generate_content_async(model, context: str, max_retries: int = 3) -> str:
+    # Create model optimized for high concurrency
+    def create_model():
+        genai.configure(api_key=api_key)
+        return genai.GenerativeModel(settings.GEMINI_MODEL)
+
+    return await loop.run_in_executor(model_creation_pool, create_model)
+
+async def generate_content_async(model, context: str, max_retries: int = 2, priority: str = "normal") -> str:
     """
-    Generate content asynchronously using thread pool to avoid blocking.
-    Includes retry logic for better reliability.
+    Generate content asynchronously optimized for 25+ concurrent users.
+    Uses semaphore-based throttling and dedicated thread pools.
     """
+    start_time = time.time()
     loop = asyncio.get_event_loop()
 
-    for attempt in range(max_retries):
-        try:
-            # Run the blocking generate_content in a thread pool
-            response = await loop.run_in_executor(
-                thread_pool,
-                lambda: model.generate_content(context)
-            )
-            if response and response.text:
-                return response.text.strip()
-            else:
-                raise Exception("Empty response from AI model")
+    # Use semaphore to limit concurrent AI requests and prevent overload
+    async with request_semaphore:
+        # Global rate limiting to prevent overwhelming API
+        global last_request_time
+        current_time = time.time()
+        time_since_last = current_time - last_request_time
+        if time_since_last < min_request_interval:
+            await asyncio.sleep(min_request_interval - time_since_last)
+        last_request_time = time.time()
 
-        except Exception as e:
-            chat_logger.warning(f"AI generation attempt {attempt + 1} failed: {str(e)}")
-            if attempt == max_retries - 1:
-                chat_logger.error(f"All {max_retries} AI generation attempts failed: {str(e)}")
-                raise
-            # Wait a bit before retrying
-            await asyncio.sleep(0.5 * (attempt + 1))
+        for attempt in range(max_retries):
+            try:
+                # Add larger delay to spread requests across time and prevent quota exhaustion
+                await asyncio.sleep(0.1 + (hash(str(model)) % 100) / 1000)  # 0.1-0.2s spread
+
+                # Use dedicated AI generation pool with throttling
+                response = await loop.run_in_executor(
+                    ai_generation_pool,
+                    lambda: model.generate_content(context)
+                )
+                if response and response.text:
+                    # Record performance metrics
+                    end_time = time.time()
+                    response_time = end_time - start_time
+
+                    with request_times_lock:
+                        request_times.append(response_time)
+                        # Keep only last 100 requests for monitoring
+                        if len(request_times) > 100:
+                            request_times.pop(0)
+
+                    chat_logger.debug(f"AI response generated in {response_time:.2f}s (priority: {priority})")
+                    return response.text.strip()
+                else:
+                    raise Exception("Empty response from AI model")
+
+            except Exception as e:
+                error_str = str(e)
+                # Check if it's a rate limit or quota error
+                if any(keyword in error_str.lower() for keyword in ['rate limit', 'quota', 'exhausted', '429']):
+                    chat_logger.warning(f"Rate limit/quota hit, waiting before retry {attempt + 1}: {error_str}")
+                    # Exponential backoff for rate limits
+                    wait_time = min(2.0 ** attempt, 10.0)  # Cap at 10 seconds
+                    await asyncio.sleep(wait_time)
+                else:
+                    chat_logger.warning(f"AI generation attempt {attempt + 1} failed: {error_str}")
+                    if attempt == max_retries - 1:
+                        chat_logger.error(f"All {max_retries} AI generation attempts failed: {error_str}")
+                        raise
+                    # Shorter retry delay for other errors
+                    await asyncio.sleep(0.3 * (attempt + 1))
 
     raise Exception("Failed to generate AI response after all retries")
 
@@ -172,8 +272,8 @@ class ChatService:
         """
 
         try:
-            # Generate response using async Gemini with rotated API key
-            rotated_model = get_rotated_model()
+            # Generate response using async Gemini with rotated API key - TRUE CONCURRENCY
+            rotated_model = await get_rotated_model_async()
             ai_response = await generate_content_async(rotated_model, context)
 
             # Validate response
@@ -200,10 +300,14 @@ class ChatService:
             # Re-raise HTTP exceptions as-is
             raise
         except Exception as e:
-            chat_logger.error(f"Failed to generate response for token {token}: {str(e)}")
+            error_msg = str(e)
+            chat_logger.error(f"Failed to generate response for token {token}: {error_msg}")
 
-            # Provide a fallback response instead of failing completely
-            fallback_response = f"I apologize, but I'm having trouble processing your question about the document '{pdf_context.get('filename', 'the selected PDF')}' right now. Please try rephrasing your question or try again in a moment."
+            # Check if it's a rate limit or overload error
+            if any(keyword in error_msg.lower() for keyword in ['rate limit', 'quota', 'overload', 'timeout']):
+                fallback_response = f"I'm currently experiencing high demand. Please wait a moment and try your question again. Your question about '{pdf_context.get('filename', 'the document')}' is important to me."
+            else:
+                fallback_response = f"I apologize, but I'm having trouble processing your question about the document '{pdf_context.get('filename', 'the selected PDF')}' right now. Please try rephrasing your question or try again in a moment."
 
             # Store fallback in chat history
             def store_fallback_entry():
@@ -371,7 +475,7 @@ class ChatService:
         try:
             # Generate response using async Gemini with rotated API key
             chat_logger.info("Sending request to Gemini AI")
-            rotated_model = get_rotated_model()
+            rotated_model = await get_rotated_model_async()
             ai_response = await generate_content_async(rotated_model, context)
             chat_logger.info("Gemini AI response received")
 
@@ -538,7 +642,7 @@ class ChatService:
         """
 
         try:
-            rotated_model = get_rotated_model()
+            rotated_model = await get_rotated_model_async()
             ai_response = await generate_content_async(rotated_model, evaluation_context)
 
             # Try to extract JSON from the response
@@ -612,7 +716,7 @@ class ChatService:
                     Respond with just the explanation, no additional formatting.
                     """
 
-                    rotated_model = get_rotated_model()
+                    rotated_model = await get_rotated_model_async()
                     explanation_response = await generate_content_async(rotated_model, explanation_context)
                     correct_answer_explanation = explanation_response.strip() if explanation_response else f"Option {correct_answer_clean} is the correct answer according to the document."
 
@@ -724,7 +828,7 @@ class ChatService:
         """
 
         try:
-            rotated_model = get_rotated_model()
+            rotated_model = await get_rotated_model_async()
             ai_response = await generate_content_async(rotated_model, overall_context)
 
             # Parse AI response

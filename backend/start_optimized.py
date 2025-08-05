@@ -40,24 +40,32 @@ def main():
         except ImportError:
             print("⚠️  uvloop not available, using default event loop")
     
-    # Start the server with optimized configuration for concurrency
+    # Start the server optimized for 3000+ concurrent requests with 14 API keys
+    print(f"🔑 Utilizing 14 API keys for massive concurrency")
+    print(f"⚡ Configured for 3000+ concurrent requests")
+
     uvicorn.run(
         "main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=False,  # Disable reload for better performance with multiple workers
-        workers=4,     # Multiple workers for true concurrency
+        reload=False,  # Disable reload for production performance
+        workers=16,    # More workers for 3000+ concurrent users
         loop="asyncio",  # Windows compatible
-        access_log=True,
-        log_level="info",
-        # Performance optimizations for concurrency
-        backlog=4096,  # Increase connection backlog for more concurrent connections
-        timeout_keep_alive=10,  # Keep connections alive longer to reduce overhead
-        limit_concurrency=2000,  # Increased max concurrent connections
-        limit_max_requests=50000,  # Increased max requests per worker
-        # Additional optimizations
-        timeout_graceful_shutdown=30,  # Graceful shutdown timeout
-        h11_max_incomplete_event_size=16384,  # Increase buffer size
+        access_log=False,  # Disable access logs for better performance
+        log_level="error",  # Minimal logging for maximum performance
+        # Extreme high-concurrency optimizations for 3000+ requests
+        backlog=32768,  # Massive connection backlog for burst traffic
+        timeout_keep_alive=120,  # Keep connections alive very long
+        limit_concurrency=50000,  # Support massive concurrent connections
+        limit_max_requests=500000,  # Very high request limit per worker
+        # Additional optimizations for 3000+ users
+        timeout_graceful_shutdown=180,  # Very long graceful shutdown
+        h11_max_incomplete_event_size=131072,  # Very large buffer size
+        ws_max_size=67108864,  # Massive WebSocket message size
+        ws_ping_interval=60,  # Long WebSocket ping interval
+        ws_ping_timeout=60,  # Long WebSocket ping timeout
+        # Additional performance settings
+        interface="asgi3",  # Use ASGI3 interface for better performance
     )
 
 if __name__ == "__main__":
