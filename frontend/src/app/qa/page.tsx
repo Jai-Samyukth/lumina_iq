@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi, pdfApi, PDFSessionInfo } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   BookOpen,
   LogOut,
@@ -26,7 +28,8 @@ import {
   Target,
   CheckCircle2,
   Clock,
-  Zap
+  Zap,
+  Copy
 } from 'lucide-react';
 
 interface Question {
@@ -353,7 +356,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
 
   const navigationItems = [
     { icon: MessageSquare, label: 'Chat', path: '/chat' },
-    { icon: HelpCircle, label: 'Q&A', path: '/qa', active: true },
+    { icon: HelpCircle, label: 'Q&A Genration', path: '/qa', active: true },
     { icon: Brain, label: 'Answer Quiz', path: '/answer-questions' },
     { icon: StickyNote, label: 'Notes', path: '/notes' },
     { icon: UploadIcon, label: 'New PDF', path: '/upload' },
@@ -436,13 +439,13 @@ Please provide a thorough, well-structured answer that helps the user learn from
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: '#6B705C' }}>
-                  {user?.email}
+                  {user?.username}
                 </p>
                 <p className="text-xs" style={{ color: '#A5A58D' }}>Logged in</p>
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
               style={{ backgroundColor: '#CB997E', color: 'white' }}
               onMouseEnter={(e) => {
@@ -731,6 +734,12 @@ Please provide a thorough, well-structured answer that helps the user learn from
                                         <ReactMarkdown
                                           remarkPlugins={[remarkGfm]}
                                           components={{
+                                            p: ({ children }) => (
+                                              <p className="leading-relaxed mb-2" style={{ color: '#6B705C' }}>{children}</p>
+                                            ),
+                                            pre: ({ children }) => (
+                                              <div className="my-3 overflow-hidden rounded-lg">{children}</div>
+                                            ),
                                             h1: ({ children }) => (
                                               <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" style={{ color: '#6B705C' }}>
                                                 {children}
@@ -775,19 +784,43 @@ Please provide a thorough, well-structured answer that helps the user learn from
                                               </blockquote>
                                             ),
                                             code: ({ className, children, ...props }) => {
-                                              const isInline = 'inline' in props;
+                                              const match = /language-(\w+)/.exec(className || '');
+                                              const language = match ? match[1] : '';
+                                              const isInline = !className || !match;
+
                                               return !isInline ? (
-                                                <div className="relative my-2">
-                                                  <pre className="rounded p-3 overflow-x-auto text-xs"
-                                                       style={{ backgroundColor: '#6B705C', color: '#FFE8D6' }}>
-                                                    <code className={className} {...props}>
-                                                      {children}
-                                                    </code>
-                                                  </pre>
+                                                <div className="relative my-3 group">
+                                                  <div className="flex items-center justify-between bg-gray-800 text-gray-300 px-3 py-2 rounded-t-lg text-xs">
+                                                    <span className="font-medium">
+                                                      {language ? language.toUpperCase() : 'CODE'}
+                                                    </span>
+                                                    <button
+                                                      onClick={() => navigator.clipboard?.writeText(String(children))}
+                                                      className="flex items-center space-x-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors opacity-0 group-hover:opacity-100"
+                                                      title="Copy code"
+                                                    >
+                                                      <Copy className="h-3 w-3" />
+                                                      <span>Copy</span>
+                                                    </button>
+                                                  </div>
+                                                  <SyntaxHighlighter
+                                                    language={language || 'text'}
+                                                    style={vscDarkPlus}
+                                                    customStyle={{
+                                                      margin: 0,
+                                                      borderRadius: '0 0 0.5rem 0.5rem',
+                                                      fontSize: '0.75rem',
+                                                      lineHeight: '1.4'
+                                                    }}
+                                                    showLineNumbers={true}
+                                                    wrapLines={true}
+                                                    {...props}
+                                                  >
+                                                    {String(children).replace(/\n$/, '')}
+                                                  </SyntaxHighlighter>
                                                 </div>
                                               ) : (
-                                                <code className="px-2 py-1 rounded text-xs font-mono"
-                                                      style={{ backgroundColor: '#B7B7A4', color: '#6B705C' }} {...props}>
+                                                <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-mono border" {...props}>
                                                   {children}
                                                 </code>
                                               );

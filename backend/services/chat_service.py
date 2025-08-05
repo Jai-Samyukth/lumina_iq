@@ -12,10 +12,47 @@ from models.chat import (
     QuizSubmissionResponse,
     QuizAnswer
 )
+import sys
+import os
+import logging
 
-# Configure Gemini AI
-genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel(settings.GEMINI_MODEL)
+# Add the parent directory to the path to import from api_rotation
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+try:
+    from api_rotation.api_key_rotator import api_key_rotator
+    ROTATION_ENABLED = True
+    logging.info("API key rotation enabled")
+except ImportError as e:
+    logging.warning(f"API key rotation not available: {e}")
+    ROTATION_ENABLED = False
+
+def get_rotated_model():
+    """
+    Get a Gemini model instance with a rotated API key.
+    Falls back to settings API key if rotation is not available.
+    """
+    api_key = None
+
+    if ROTATION_ENABLED:
+        api_key = api_key_rotator.get_next_key()
+        if api_key:
+            # Get rotation stats for logging
+            stats = api_key_rotator.get_current_stats()
+            prev_index = (stats['current_index'] - 1) % stats['total_keys'] if stats['total_keys'] > 0 else 0
+            key_preview = api_key_rotator.get_key_preview(api_key)
+            logging.info(f"🔄 API ROTATION: Using key #{prev_index + 1}/{stats['total_keys']} - {key_preview}")
+        else:
+            logging.warning("⚠️ API ROTATION: No rotated API key available, falling back to settings key")
+
+    # Fallback to settings key if rotation fails or is disabled
+    if not api_key:
+        api_key = settings.GEMINI_API_KEY
+        logging.info("🔑 API ROTATION: Using fallback API key from settings")
+
+    # Configure genai with the selected key and create model
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel(settings.GEMINI_MODEL)
 
 class ChatService:
     @staticmethod
@@ -57,8 +94,9 @@ class ChatService:
         """
 
         try:
-            # Generate response using Gemini
-            response = model.generate_content(context)
+            # Generate response using Gemini with rotated API key
+            rotated_model = get_rotated_model()
+            response = rotated_model.generate_content(context)
             ai_response = response.text
 
             # Store in chat history
@@ -211,9 +249,10 @@ class ChatService:
         """
 
         try:
-            # Generate response using Gemini
+            # Generate response using Gemini with rotated API key
             print("Sending request to Gemini AI...")
-            response = model.generate_content(context)
+            rotated_model = get_rotated_model()
+            response = rotated_model.generate_content(context)
             print(f"DEBUG: Gemini response received, length: {len(response.text) if response and response.text else 0}")
 
             if not response or not response.text:
@@ -386,7 +425,8 @@ class ChatService:
         """
 
         try:
-            response = model.generate_content(evaluation_context)
+            rotated_model = get_rotated_model()
+            response = rotated_model.generate_content(evaluation_context)
             ai_response = response.text
 
             # Try to extract JSON from the response
@@ -458,7 +498,8 @@ class ChatService:
                     Respond with just the explanation, no additional formatting.
                     """
 
-                    explanation_response = model.generate_content(explanation_context)
+                    rotated_model = get_rotated_model()
+                    explanation_response = rotated_model.generate_content(explanation_context)
                     correct_answer_explanation = explanation_response.text.strip() if explanation_response and explanation_response.text else f"Option {correct_answer_clean} is the correct answer according to the document."
 
                 except Exception as e:
@@ -569,7 +610,8 @@ class ChatService:
         """
 
         try:
-            response = model.generate_content(overall_context)
+            rotated_model = get_rotated_model()
+            response = rotated_model.generate_content(overall_context)
             ai_response = response.text
 
             # Parse AI response

@@ -279,7 +279,7 @@ export default function AnswerQuestionsPage() {
 
   const navigationItems = [
     { icon: MessageSquare, label: 'Chat', path: '/chat' },
-    { icon: HelpCircle, label: 'Q&A', path: '/qa' },
+    { icon: HelpCircle, label: 'Q&A Generation', path: '/qa' },
     { icon: Brain, label: 'Answer Quiz', path: '/answer-questions', active: true },
     { icon: StickyNote, label: 'Notes', path: '/notes' },
     { icon: UploadIcon, label: 'New PDF', path: '/upload' },
@@ -471,7 +471,7 @@ export default function AnswerQuestionsPage() {
                           <div className="flex items-center space-x-3">
                             <Timer className="h-5 w-5" />
                             <div>
-                              <h3 className="font-semibold">Quiz Mode</h3>
+                              <h3 className="font-semibold">MCQ Quiz</h3>
                               <p className="text-xs opacity-80">Timed evaluation with scoring</p>
                             </div>
                           </div>
@@ -490,7 +490,7 @@ export default function AnswerQuestionsPage() {
                           <div className="flex items-center space-x-3">
                             <Brain className="h-5 w-5" />
                             <div>
-                              <h3 className="font-semibold">Practice Mode</h3>
+                              <h3 className="font-semibold">Q&A Mode</h3>
                               <p className="text-xs opacity-80">Relaxed learning with feedback</p>
                             </div>
                           </div>

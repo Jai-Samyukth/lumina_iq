@@ -1,0 +1,7 @@
+{
+  "text": "JavaScript Programming Guide\nIntroduction to JavaScript\nJavaScript is a versatile, high-level programming language that is primarily\nused for web development. It enables interactive web pages and is an essential\npart of web applications.\nKey Features:\n Dynamic typing\n First-class functions\n Prototype-based object-orientation\n Event-driven programming\n Asynchronous programming support\nBasic Syntax:\nVariables:\nlet name = \"Bob\";\nconst age = 30;\nvar isStudent = true;\nFunctions:\nfunction greet(name) {\n    return ;\n}\nArrow Functions:\nconst add = (a, b) => a + b;\nObjects:\nconst person = {\n    name: \"Alice\",\n    age: 25,\n    greet() {\n\n        return ;\n    }\n};\nThis is another sample PDF for testing the learning application.",
+  "file_path": "..\\books\\JavaScript_Guide.pdf",
+  "cached_at": "2025-08-04T10:03:31.771502",
+  "text_length": 731,
+  "cache_key": "2ff27c21feb2a6be8b00becdc02d3983"
+}

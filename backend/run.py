@@ -12,11 +12,18 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config.settings import settings
+from utils.ip_detector import setup_frontend_env
 
 def main():
     """Start the FastAPI server."""
     print("🚀 Starting Learning App Backend...")
-    print(f"📍 Server will run on: http://{settings.HOST}:{settings.PORT}")
+
+    # Auto-detect IP and update frontend .env file
+    print("\n🔧 Setting up frontend environment...")
+    detected_ip = setup_frontend_env(settings.PORT)
+
+    print(f"\n📍 Server will run on: http://{settings.HOST}:{settings.PORT}")
+    print(f"🌐 Accessible at: http://{detected_ip}:{settings.PORT}")
     print(f"📚 Books directory: {settings.BOOKS_DIR}")
     print(f"🔑 Using Gemini model: {settings.GEMINI_MODEL}")
     print("=" * 50)

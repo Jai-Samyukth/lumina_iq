@@ -19,6 +19,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Custom color classes */
+  --color-terracotta: var(--terracotta);
+  --color-sandy-beige: var(--sandy-beige);
+  --color-cream: var(--cream);
+  --color-light-sage: var(--light-sage);
+  --color-muted-sage: var(--muted-sage);
+  --color-olive-green: var(--olive-green);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -686,6 +694,43 @@ body {
 
 .fade-in {
   animation: fadeIn 0.6s ease-out;
+}
+
+/* Utility classes for custom colors */
+.bg-terracotta { background-color: var(--terracotta); }
+.bg-sandy-beige { background-color: var(--sandy-beige); }
+.bg-cream { background-color: var(--cream); }
+.bg-light-sage { background-color: var(--light-sage); }
+.bg-muted-sage { background-color: var(--muted-sage); }
+.bg-olive-green { background-color: var(--olive-green); }
+
+.text-terracotta { color: var(--terracotta); }
+.text-sandy-beige { color: var(--sandy-beige); }
+.text-cream { color: var(--cream); }
+.text-light-sage { color: var(--light-sage); }
+.text-muted-sage { color: var(--muted-sage); }
+.text-olive-green { color: var(--olive-green); }
+
+.border-terracotta { border-color: var(--terracotta); }
+.border-sandy-beige { border-color: var(--sandy-beige); }
+.border-cream { border-color: var(--cream); }
+.border-light-sage { border-color: var(--light-sage); }
+.border-muted-sage { border-color: var(--muted-sage); }
+.border-olive-green { border-color: var(--olive-green); }
+
+.placeholder-muted-sage::placeholder { color: var(--muted-sage); }
+
+/* Animation utilities */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .slide-up {
