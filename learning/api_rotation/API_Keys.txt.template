@@ -1,0 +1,11 @@
+# API Keys Template
+# Copy this file to API_Keys.txt and add your actual API keys
+# One API key per line
+
+# Example:
+# your-api-key-1
+# your-api-key-2
+# your-api-key-3
+
+# Add your Google Generative AI API keys here
+# Get keys from: https://makersuite.google.com/app/apikey

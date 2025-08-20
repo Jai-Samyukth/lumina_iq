@@ -1,0 +1,5 @@
+# for python
+.env
+__pycache__
+.vscode
+node_modules

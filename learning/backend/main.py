@@ -1,0 +1,76 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from config.settings import settings
+from routes import auth, pdf, chat
+from utils.logging_config import configure_logging
+import asyncio
+import platform
+import logging
+import os
+
+# Windows-compatible async optimizations
+if platform.system() == "Windows":
+    # Use ProactorEventLoop for better Windows performance
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+else:
+    # Try uvloop on Unix systems
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        pass
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    # Configure logging to prevent duplicates in multi-worker setup
+    worker_id = configure_logging()
+    if worker_id == '1':  # Only log from first worker
+        print("Starting Learning App API...")
+    yield
+    # Shutdown
+    if worker_id == '1':  # Only log from first worker
+        print("Shutting down Learning App API...")
+
+app = FastAPI(
+    title="Learning App API", 
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(pdf.router)
+app.include_router(chat.router)
+
+# Health check endpoint
+@app.get("/")
+async def root():
+    return {"message": "Learning App API is running"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        app, 
+        host=settings.HOST, 
+        port=settings.PORT,
+        workers=1,  # Use 1 worker for development, increase for production
+        loop="asyncio",  # Use asyncio (Windows compatible)
+        access_log=True,
+        log_level="info",
+        # Windows-compatible performance settings
+        backlog=2048,
+        timeout_keep_alive=5
+    )

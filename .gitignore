@@ -1,0 +1,125 @@
+# LuminaIQ Desktop Application - Git Ignore File
+
+
+
+# ===== BUILD OUTPUTS =====
+# Frontend Build Outputs
+learning/frontend/out/
+learning/frontend/.next/
+learning/frontend/dist/
+learning/frontend/build/
+
+# Backend Build Outputs
+learning/backend/dist/
+learning/backend/build/
+learning/backend/__pycache__/
+learning/backend/**/__pycache__/
+learning/backend/*.pyc
+learning/backend/**/*.pyc
+
+
+# Unified Installer Package
+learning/dist-unified/
+
+# ===== DEPENDENCIES =====
+# Node.js
+learning/frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+learning/backend/venv/
+learning/backend/env/
+learning/backend/.venv/
+*.egg-info/
+
+# ===== RUNTIME FILES =====
+# Logs
+learning/backend/logs/
+learning/backend/*.log
+learning/frontend/*.log
+*.log
+
+# Cache
+learning/backend/cache/
+learning/backend/.pytest_cache/
+learning/frontend/.cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ===== DEVELOPMENT FILES =====
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-*
+.DS_Store
+Thumbs.db
+
+# ===== SYSTEM FILES =====
+# Windows
+*.exe
+*.msi
+*.dll
+*.pdb
+*.lib
+*.exp
+
+# But keep our distribution executables (commented out to include them)
+# !learning/dist-unified/**/*.exe
+# !learning/dist-unified/**/*.msi
+
+# ===== DOCUMENTATION =====
+# Keep documentation files
+!*.md
+!*.txt
+!README*
+!CHANGELOG*
+!LICENSE*
+
+# ===== CONFIGURATION =====
+# Keep configuration templates but not actual configs with secrets
+!learning/backend/config/*.py.template
+!learning/frontend/src/config/*.ts.template
+
+# ===== BOOKS AND UPLOADS =====
+# Exclude uploaded books and user content
+learning/books/*.pdf
+learning/backend/uploads/
+learning/frontend/uploads/
+
+# But keep sample files
+!learning/books/sample_*
+!learning/books/README.md
+
+# ===== RUST/CARGO =====
+# Rust build artifacts
+**/target/
+Cargo.lock
+**/*.rs.bk
+
+# ===== MISC =====
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Backup files
+*.bak
+*.backup
+*.old
