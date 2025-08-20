@@ -1,0 +1,54 @@
+2025-08-20 13:25:55 | INFO | services.auth_service | Worker-20344 | User logged out
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | === LOGIN ATTEMPT DEBUG ===
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Received username: 'vsbec' (length: 5)
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Received password: 'vsbec' (length: 5)
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Expected username: 'vsbec' (length: 5)
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Expected password: 'vsbec' (length: 5)
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Username match: True
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | Password match: True
+2025-08-20 13:26:00 | INFO | services.auth_service | Worker-20344 | === END DEBUG ===
+2025-08-20 13:27:24 | INFO | pdf_service | Worker-20704 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf"}, "timestamp": "2025-08-20T07:57:24.911117", "logger": "pdf_service"}
+2025-08-20 13:27:24 | INFO | pdf_service | Worker-20704 | {"message": "Cache miss - extracting text from PDF", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf"}, "timestamp": "2025-08-20T07:57:24.912170", "logger": "pdf_service"}
+2025-08-20 13:27:25 | INFO | pdf_service | Worker-20704 | {"message": "PDF loaded successfully", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf", "pages": 123}, "timestamp": "2025-08-20T07:57:25.026090", "logger": "pdf_service"}
+2025-08-20 13:27:28 | INFO | pdf_service | Worker-20704 | {"message": "Text extraction completed", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf", "extracted_length": 191455}, "timestamp": "2025-08-20T07:57:28.144375", "logger": "pdf_service"}
+2025-08-20 13:27:28 | INFO | cache | Worker-20704 | {"message": "Successfully cached text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf", "cache_key": "325f3d5cc8c0c9f243d5f4217a542102"}, "timestamp": "2025-08-20T07:57:28.149755", "logger": "cache"}
+2025-08-20 13:27:28 | INFO | pdf_service | Worker-20704 | {"message": "Successfully cached extracted text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(1).pdf"}, "timestamp": "2025-08-20T07:57:28.151260", "logger": "pdf_service"}
+2025-08-20 13:29:23 | INFO | services.auth_service | Worker-20704 | User logged out
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | === LOGIN ATTEMPT DEBUG ===
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Received username: 'vsbec' (length: 5)
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Received password: 'vsbec' (length: 5)
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Expected username: 'vsbec' (length: 5)
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Expected password: 'vsbec' (length: 5)
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Username match: True
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | Password match: True
+2025-08-20 13:29:27 | INFO | services.auth_service | Worker-20704 | === END DEBUG ===
+2025-08-20 13:29:32 | INFO | pdf_service | Worker-20704 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf"}, "timestamp": "2025-08-20T07:59:32.108692", "logger": "pdf_service"}
+2025-08-20 13:29:32 | INFO | pdf_service | Worker-20704 | {"message": "Cache miss - extracting text from PDF", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf"}, "timestamp": "2025-08-20T07:59:32.109709", "logger": "pdf_service"}
+2025-08-20 13:29:32 | INFO | pdf_service | Worker-20704 | {"message": "PDF loaded successfully", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf", "pages": 123}, "timestamp": "2025-08-20T07:59:32.147055", "logger": "pdf_service"}
+2025-08-20 13:29:36 | INFO | pdf_service | Worker-20704 | {"message": "Text extraction completed", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf", "extracted_length": 191455}, "timestamp": "2025-08-20T07:59:36.332970", "logger": "pdf_service"}
+2025-08-20 13:29:36 | INFO | cache | Worker-20704 | {"message": "Successfully cached text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf", "cache_key": "1ad676fb2b37da2bdc5146ba29fd43f7"}, "timestamp": "2025-08-20T07:59:36.339106", "logger": "cache"}
+2025-08-20 13:29:36 | INFO | pdf_service | Worker-20704 | {"message": "Successfully cached extracted text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf"}, "timestamp": "2025-08-20T07:59:36.341707", "logger": "pdf_service"}
+2025-08-20 13:29:36 | INFO | pdf_service | Worker-20704 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf"}, "timestamp": "2025-08-20T07:59:36.347631", "logger": "pdf_service"}
+2025-08-20 13:29:36 | INFO | cache | Worker-20704 | {"message": "Cache hit", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf", "cached_at": "2025-08-20T13:29:36.334034"}, "timestamp": "2025-08-20T07:59:36.378522", "logger": "cache"}
+2025-08-20 13:29:36 | INFO | pdf_service | Worker-20704 | {"message": "Using cached text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\Ikigai - The Japanese secret to a long and happy life(2).pdf", "text_length": 191455}, "timestamp": "2025-08-20T07:59:36.379042", "logger": "pdf_service"}
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | === LOGIN ATTEMPT DEBUG ===
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Received username: 'vsbec' (length: 5)
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Received password: 'vsbec' (length: 5)
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Expected username: 'vsbec' (length: 5)
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Expected password: 'vsbec' (length: 5)
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Username match: True
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | Password match: True
+2025-08-20 13:32:26 | INFO | services.auth_service | Worker-20704 | === END DEBUG ===
+2025-08-20 13:32:37 | INFO | pdf_service | Worker-20704 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf"}, "timestamp": "2025-08-20T08:02:37.085092", "logger": "pdf_service"}
+2025-08-20 13:32:37 | INFO | pdf_service | Worker-20704 | {"message": "Cache miss - extracting text from PDF", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf"}, "timestamp": "2025-08-20T08:02:37.086247", "logger": "pdf_service"}
+2025-08-20 13:32:37 | INFO | pdf_service | Worker-20704 | {"message": "PDF loaded successfully", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf", "pages": 122}, "timestamp": "2025-08-20T08:02:37.124855", "logger": "pdf_service"}
+2025-08-20 13:32:39 | INFO | pdf_service | Worker-20704 | {"message": "Text extraction completed", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf", "extracted_length": 176764}, "timestamp": "2025-08-20T08:02:39.375574", "logger": "pdf_service"}
+2025-08-20 13:32:39 | INFO | cache | Worker-20704 | {"message": "Successfully cached text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf", "cache_key": "45e06d75076d1d27dd6638c09f5f4992"}, "timestamp": "2025-08-20T08:02:39.378465", "logger": "cache"}
+2025-08-20 13:32:39 | INFO | pdf_service | Worker-20704 | {"message": "Successfully cached extracted text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf"}, "timestamp": "2025-08-20T08:02:39.378822", "logger": "pdf_service"}
+2025-08-20 13:32:39 | INFO | pdf_service | Worker-20704 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf"}, "timestamp": "2025-08-20T08:02:39.442965", "logger": "pdf_service"}
+2025-08-20 13:32:39 | INFO | cache | Worker-20704 | {"message": "Cache hit", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf", "cached_at": "2025-08-20T13:32:39.376126"}, "timestamp": "2025-08-20T08:02:39.461225", "logger": "cache"}
+2025-08-20 13:32:39 | INFO | pdf_service | Worker-20704 | {"message": "Using cached text", "data": {"file_path": "C:\\Shyamnath\\learning2\\learning\\books\\The-Mom-Test-en.pdf", "text_length": 176764}, "timestamp": "2025-08-20T08:02:39.461855", "logger": "pdf_service"}
+2025-08-20 13:33:03 | INFO | chat_service | Worker-20704 | Successfully generated response for token user_d8dcefc3af94, length: 2162
+2025-08-20 13:33:11 | INFO | chat_service | Worker-20704 | Successfully generated response for token user_260ce1a54922, length: 2927
+2025-08-20 13:33:44 | INFO | chat_service | Worker-20704 | Successfully generated response for token user_d8dcefc3af94, length: 6257
+2025-08-20 13:33:46 | INFO | chat_service | Worker-20704 | Successfully generated response for token user_260ce1a54922, length: 6541

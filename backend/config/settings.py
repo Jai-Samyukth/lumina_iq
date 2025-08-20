@@ -1,5 +1,6 @@
 import os
 import socket
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -39,8 +40,15 @@ class Settings:
         ]
         return list(set(origins))  # Remove duplicates
     
-    # File paths
-    BOOKS_DIR = r"D:\Projects\learning\books"
+    # File paths - Use relative paths from project root
+    @property
+    def BOOKS_DIR(self):
+        # Get the project root directory (parent of backend)
+        backend_dir = Path(__file__).parent.parent
+        project_root = backend_dir.parent
+        books_dir = project_root / "books"
+        return str(books_dir)
+
     CACHE_DIR = 'cache'
     
     # Session

@@ -215,8 +215,25 @@ class PDFService:
             raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
 
     @staticmethod
+    def _generate_unique_filename(books_dir: Path, original_filename: str) -> str:
+        """Generate a unique filename to avoid conflicts using parentheses with incremental numbers"""
+        if not (books_dir / original_filename).exists():
+            return original_filename
+
+        # Split filename and extension
+        name_part = original_filename.rsplit('.', 1)[0]
+        extension = '.' + original_filename.rsplit('.', 1)[1] if '.' in original_filename else ''
+
+        counter = 1
+        while True:
+            new_filename = f"{name_part}({counter}){extension}"
+            if not (books_dir / new_filename).exists():
+                return new_filename
+            counter += 1
+
+    @staticmethod
     async def upload_pdf(file: UploadFile, token: str) -> PDFUploadResponse:
-        """Upload a new PDF to the books folder"""
+        """Upload a new PDF to the books folder with automatic duplicate filename handling"""
         if not file.filename.endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
@@ -224,8 +241,11 @@ class PDFService:
         books_dir = Path(settings.BOOKS_DIR)
         books_dir.mkdir(exist_ok=True)
 
-        # Save file
-        file_path = books_dir / file.filename
+        # Generate unique filename to avoid conflicts
+        unique_filename = PDFService._generate_unique_filename(books_dir, file.filename)
+        file_path = books_dir / unique_filename
+
+        # Save file with unique filename
         async with aiofiles.open(file_path, 'wb') as f:
             content = await file.read()
             await f.write(content)
@@ -237,7 +257,7 @@ class PDFService:
 
             # Store in memory thread-safely (replace with database in production)
             storage_manager.safe_set(pdf_contexts, token, {
-                "filename": file.filename,
+                "filename": unique_filename,
                 "content": text_content,
                 "uploaded_at": datetime.now().isoformat()
             })
@@ -245,7 +265,7 @@ class PDFService:
 
             return PDFUploadResponse(
                 message="PDF uploaded and processed successfully",
-                filename=file.filename,
+                filename=unique_filename,
                 metadata=metadata,
                 text_length=len(text_content)
             )
