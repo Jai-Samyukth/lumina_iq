@@ -447,7 +447,8 @@ class ChatService:
         REQUIREMENTS:
         1. Read and analyze the ENTIRE document content provided above
         2. {'Focus specifically on the topic: "' + topic.strip() + '" while using the full document as context' if topic and topic.strip() else 'Create questions that cover the full scope of the document'}
-        3. Include questions about:
+        3. Generate Question according to Blooms Taxonomoy of Analyzing, Understanding, Remembering, Evaluating and Creating. Distribute the questions across multiple levels of Bloom's Taxonomy (Remembering, Understanding, Applying, Analyzing, Evaluating, Creating).
+        4. Include questions about:
            - Key concepts and definitions from the text
            - Important details and facts mentioned
            - Practical applications discussed
@@ -634,7 +635,7 @@ class ChatService:
         {{
             "score": [0-10 integer],
             "feedback": "[Detailed feedback explaining the score, highlighting what was correct and what was missing]",
-            "suggestions": "[Specific suggestions for improvement]",
+            "suggestions": "[Specific suggestions for improvement, including where to focus, what has been missed and how to correct]",
             "correct_answer_hint": "[Brief hint about the correct answer without giving it away completely]"
         }}
 

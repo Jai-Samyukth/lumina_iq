@@ -78,8 +78,8 @@ python setup_client_access.py --server-ip 192.168.1.100
 ### 5. **Verify Login Functionality**
 
 Test the login with default credentials:
-- Username: `vsbec`
-- Password: `vsbec`
+- Username: `surya`
+- Password: `prasath`
 
 ## 🛠️ Troubleshooting
 

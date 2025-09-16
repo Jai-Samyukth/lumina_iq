@@ -23,7 +23,7 @@ class Settings:
     
     # Gemini AI
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyBiKBADQGhRuFn5glEU-frmORFc0KRleVQ')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-lite')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
     
     # CORS - Dynamic IP detection for development
     @property

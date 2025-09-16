@@ -383,7 +383,7 @@ Please provide a thorough, well-structured answer that helps the user learn from
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold" style={{ color: '#6B705C' }}>LuminalQ</h1>
+                <h1 className="text-xl font-bold" style={{ color: '#6B705C' }}>Lumina IQ</h1>
                 <p className="text-xs font-medium" style={{ color: '#A5A58D' }}>AI Learning Assistant</p>
               </div>
             </div>

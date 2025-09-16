@@ -108,7 +108,7 @@ export default function UploadPage() {
                 <BookOpen className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-olive-green">LuminalQ</h1>
+                <h1 className="text-3xl font-bold text-olive-green">Lumina IQ</h1>
                 <p className="text-sm font-medium text-muted-sage">made with Genrec-AI</p>
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function UploadPage() {
             Upload Your Learning Material
           </h2>
           <p className="text-xl max-w-3xl mx-auto mb-8 text-muted-sage">
-            Upload a PDF file to start your learning journey with LuminalQ.
+            Upload a PDF file to start your learning journey with Lumina IQ.
           </p>
         </div>
 
