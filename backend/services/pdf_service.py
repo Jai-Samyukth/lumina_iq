@@ -8,7 +8,10 @@ from typing import List
 from config.settings import settings
 from utils.storage import pdf_contexts, pdf_metadata, storage_manager, storage_manager
 from utils.cache import cache_service
-from utils.logger import pdf_logger
+from utils.logging_config import get_logger
+
+# Use enhanced logger
+pdf_logger = get_logger("pdf_service")
 from models.pdf import PDFInfo, PDFListResponse, PDFUploadResponse, PDFMetadata
 import warnings
 

@@ -670,3 +670,37 @@ google.api_core.exceptions.RetryError: Timeout of 60.0s exceeded, last exception
 2025-09-16 14:26:13 | INFO | chat_service | Worker-31472 | Sending request to Gemini AI
 2025-09-16 14:26:33 | INFO | chat_service | Worker-31472 | Gemini AI response received
 2025-09-16 14:26:33 | INFO | chat_service | Worker-31472 | {"message": "Gemini AI response received", "data": {"response_length": 4921}, "timestamp": "2025-09-16T08:56:33.395007", "logger": "chat_service"}
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | === LOGIN ATTEMPT DEBUG ===
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Received username: 'vsbec' (length: 5)
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Received password: 'vsbec' (length: 5)
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Expected username: 'vsbec' (length: 5)
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Expected password: 'vsbec' (length: 5)
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Username match: True
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | Password match: True
+2025-09-22 12:04:06 | INFO | services.auth_service | Worker-19392 | === END DEBUG ===
+2025-09-22 12:04:17 | INFO | pdf_service | Worker-19392 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf"}, "timestamp": "2025-09-22T06:34:17.952672", "logger": "pdf_service"}
+2025-09-22 12:04:17 | INFO | pdf_service | Worker-19392 | {"message": "Cache miss - extracting text from PDF", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf"}, "timestamp": "2025-09-22T06:34:17.954064", "logger": "pdf_service"}
+2025-09-22 12:04:18 | INFO | pdf_service | Worker-19392 | {"message": "PDF loaded successfully", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "pages": 251}, "timestamp": "2025-09-22T06:34:18.093342", "logger": "pdf_service"}
+2025-09-22 12:04:18 | INFO | pdf_service | Worker-19392 | {"message": "Text extraction completed", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "extracted_length": 0}, "timestamp": "2025-09-22T06:34:18.193401", "logger": "pdf_service"}
+2025-09-22 12:04:18 | WARNING | pdf_service | Worker-19392 | {"message": "Very little text extracted", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "extracted_length": 0, "preview": ""}, "timestamp": "2025-09-22T06:34:18.193401", "logger": "pdf_service"}
+2025-09-22 12:04:18 | INFO | cache | Worker-19392 | {"message": "Successfully cached text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "cache_key": "7f8f1cc3d676b73d02d58ad379a569f0"}, "timestamp": "2025-09-22T06:34:18.193401", "logger": "cache"}
+2025-09-22 12:04:18 | INFO | pdf_service | Worker-19392 | {"message": "Successfully cached extracted text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf"}, "timestamp": "2025-09-22T06:34:18.193401", "logger": "pdf_service"}
+2025-09-22 12:04:18 | INFO | pdf_service | Worker-19392 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf"}, "timestamp": "2025-09-22T06:34:18.209846", "logger": "pdf_service"}
+2025-09-22 12:04:18 | INFO | cache | Worker-19392 | {"message": "Cache hit", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "cached_at": "2025-09-22T12:04:18.193401"}, "timestamp": "2025-09-22T06:34:18.220853", "logger": "cache"}
+2025-09-22 12:04:18 | INFO | pdf_service | Worker-19392 | {"message": "Using cached text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\computer programming.pdf", "text_length": 0}, "timestamp": "2025-09-22T06:34:18.221846", "logger": "pdf_service"}
+2025-09-22 12:04:33 | INFO | chat_service | Worker-19392 | Successfully generated response for token user_8032fe51a8c5, length: 231
+2025-09-22 12:04:49 | INFO | pdf_service | Worker-19392 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf"}, "timestamp": "2025-09-22T06:34:49.996392", "logger": "pdf_service"}
+2025-09-22 12:04:49 | INFO | pdf_service | Worker-19392 | {"message": "Cache miss - extracting text from PDF", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf"}, "timestamp": "2025-09-22T06:34:49.996392", "logger": "pdf_service"}
+2025-09-22 12:04:50 | INFO | pdf_service | Worker-19392 | {"message": "PDF loaded successfully", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf", "pages": 6}, "timestamp": "2025-09-22T06:34:50.017992", "logger": "pdf_service"}
+2025-09-22 12:04:50 | INFO | pdf_service | Worker-19392 | {"message": "Text extraction completed", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf", "extracted_length": 11299}, "timestamp": "2025-09-22T06:34:50.314275", "logger": "pdf_service"}
+2025-09-22 12:04:50 | INFO | cache | Worker-19392 | {"message": "Successfully cached text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf", "cache_key": "bcd381fd7dba6a621efb0fd9e6ea1895"}, "timestamp": "2025-09-22T06:34:50.324529", "logger": "cache"}
+2025-09-22 12:04:50 | INFO | pdf_service | Worker-19392 | {"message": "Successfully cached extracted text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf"}, "timestamp": "2025-09-22T06:34:50.324529", "logger": "pdf_service"}
+2025-09-22 12:04:50 | INFO | pdf_service | Worker-19392 | {"message": "Starting PDF text extraction", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf"}, "timestamp": "2025-09-22T06:34:50.329789", "logger": "pdf_service"}
+2025-09-22 12:04:50 | INFO | cache | Worker-19392 | {"message": "Cache hit", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf", "cached_at": "2025-09-22T12:04:50.314275"}, "timestamp": "2025-09-22T06:34:50.342415", "logger": "cache"}
+2025-09-22 12:04:50 | INFO | pdf_service | Worker-19392 | {"message": "Using cached text", "data": {"file_path": "C:\\Shyamnath\\learning\\books\\Interview Questions.pdf", "text_length": 11299}, "timestamp": "2025-09-22T06:34:50.342415", "logger": "pdf_service"}
+2025-09-22 12:05:08 | INFO | chat_service | Worker-19392 | Successfully generated response for token user_8032fe51a8c5, length: 2077
+2025-09-22 12:05:27 | INFO | chat_service | Worker-19392 | {"message": "Generating questions", "data": {"token": "user_8032fe51a8c5", "topic": "", "count": 10, "mode": "quiz"}, "timestamp": "2025-09-22T06:35:27.766189", "logger": "chat_service"}
+2025-09-22 12:05:27 | INFO | chat_service | Worker-19392 | {"message": "Processing PDF for questions", "data": {"filename": "Interview Questions.pdf", "content_length": 11299}, "timestamp": "2025-09-22T06:35:27.767281", "logger": "chat_service"}
+2025-09-22 12:05:27 | INFO | chat_service | Worker-19392 | Sending request to Gemini AI
+2025-09-22 12:05:50 | INFO | chat_service | Worker-19392 | Gemini AI response received
+2025-09-22 12:05:50 | INFO | chat_service | Worker-19392 | {"message": "Gemini AI response received", "data": {"response_length": 5039}, "timestamp": "2025-09-22T06:35:50.684915", "logger": "chat_service"}

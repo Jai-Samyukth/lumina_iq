@@ -1,3 +1,6 @@
+# Import warning suppression first
+from utils.suppress_warnings import suppress_third_party_warnings
+
 import google.generativeai as genai
 from datetime import datetime
 from fastapi import HTTPException
@@ -18,7 +21,10 @@ import logging
 import asyncio
 import concurrent.futures
 from threading import Lock
-from utils.logger import chat_logger
+from utils.logging_config import get_logger
+
+# Use enhanced logger
+chat_logger = get_logger("chat_service")
 
 # Add the parent directory to the path to import from api_rotation
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

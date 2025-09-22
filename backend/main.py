@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+# Import warning suppression first
+from utils.suppress_warnings import suppress_third_party_warnings
+
 from config.settings import settings
 from routes import auth, pdf, chat
-from utils.logging_config import configure_logging
+from utils.logging_config import configure_logging, get_logger
 import asyncio
 import platform
 import logging
@@ -24,10 +28,12 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    # Configure logging to prevent duplicates in multi-worker setup
+    # Configure enhanced logging
     worker_id = configure_logging()
+    logger = get_logger("main")
+
     if worker_id == '1':  # Only log from first worker
-        print("Starting Learning App API...")
+        logger.info("Starting Learning App API...")
     yield
     # Shutdown
     if worker_id == '1':  # Only log from first worker
