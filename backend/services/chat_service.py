@@ -21,10 +21,7 @@ import logging
 import asyncio
 import concurrent.futures
 from threading import Lock
-from utils.logging_config import get_logger
-
-# Use enhanced logger
-chat_logger = get_logger("chat_service")
+from utils.logger import chat_logger
 
 # Add the parent directory to the path to import from api_rotation
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
