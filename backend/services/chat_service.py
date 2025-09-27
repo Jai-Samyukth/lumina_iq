@@ -35,7 +35,7 @@ try:
         chat_logger._rotation_logged = True
 except ImportError as e:
     if not hasattr(chat_logger, '_rotation_error_logged'):
-        chat_logger.warning(f"API key rotation not available: {e}")
+        chat_logger.warning("API key rotation not available", error=str(e))
         chat_logger._rotation_error_logged = True
     ROTATION_ENABLED = False
 
@@ -181,7 +181,7 @@ async def generate_content_async(model, context: str, max_retries: int = 2, prio
                         if len(request_times) > 100:
                             request_times.pop(0)
 
-                    chat_logger.debug(f"AI response generated in {response_time:.2f}s (priority: {priority})")
+                    chat_logger.debug("AI response generated", response_time=f"{response_time:.2f}s", priority=priority)
                     return response.text.strip()
                 else:
                     raise Exception("Empty response from AI model")
@@ -190,14 +190,14 @@ async def generate_content_async(model, context: str, max_retries: int = 2, prio
                 error_str = str(e)
                 # Check if it's a rate limit or quota error
                 if any(keyword in error_str.lower() for keyword in ['rate limit', 'quota', 'exhausted', '429']):
-                    chat_logger.warning(f"Rate limit/quota hit, waiting before retry {attempt + 1}: {error_str}")
+                    chat_logger.warning("Rate limit/quota hit, waiting before retry", attempt=attempt + 1, error=error_str)
                     # Exponential backoff for rate limits
                     wait_time = min(2.0 ** attempt, 10.0)  # Cap at 10 seconds
                     await asyncio.sleep(wait_time)
                 else:
-                    chat_logger.warning(f"AI generation attempt {attempt + 1} failed: {error_str}")
+                    chat_logger.warning("AI generation attempt failed", attempt=attempt + 1, error=error_str)
                     if attempt == max_retries - 1:
-                        chat_logger.error(f"All {max_retries} AI generation attempts failed: {error_str}")
+                        chat_logger.error("All AI generation attempts failed", max_retries=max_retries, error=error_str)
                         raise
                     # Shorter retry delay for other errors
                     await asyncio.sleep(0.3 * (attempt + 1))
@@ -219,18 +219,18 @@ class ChatService:
         # Thread-safe check for PDF context with better error handling
         def check_pdf_context():
             if token not in pdf_contexts:
-                chat_logger.error(f"No PDF context found for token: {token}")
+                chat_logger.error("No PDF context found", token=token)
                 raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
             context = pdf_contexts[token]
             if not context or 'content' not in context:
-                chat_logger.error(f"Invalid PDF context for token: {token}")
+                chat_logger.error("Invalid PDF context", token=token)
                 raise HTTPException(status_code=400, detail="PDF context is invalid. Please select a PDF again.")
             return context
 
         try:
             pdf_context = safe_storage_access(check_pdf_context, token)
         except Exception as e:
-            chat_logger.error(f"Error accessing PDF context for token {token}: {str(e)}")
+            chat_logger.error("Error accessing PDF context", token=token, error=str(e))
             raise
 
         # Thread-safe initialization of chat history
@@ -293,7 +293,7 @@ class ChatService:
 
             safe_storage_access(store_chat_entry, token)
 
-            chat_logger.info(f"Successfully generated response for token {token}, length: {len(ai_response)}")
+            chat_logger.info("Successfully generated response", token=token, length=len(ai_response))
             return ChatResponse(
                 response=ai_response,
                 timestamp=datetime.now().isoformat()
@@ -304,7 +304,7 @@ class ChatService:
             raise
         except Exception as e:
             error_msg = str(e)
-            chat_logger.error(f"Failed to generate response for token {token}: {error_msg}")
+            chat_logger.error("Failed to generate response", token=token, error=error_msg)
 
             # Check if it's a rate limit or overload error
             if any(keyword in error_msg.lower() for keyword in ['rate limit', 'quota', 'overload', 'timeout']):
@@ -478,18 +478,15 @@ class ChatService:
 
         try:
             # Generate response using async Gemini with rotated API key
-            chat_logger.info("Sending request to Gemini AI")
             rotated_model = await get_rotated_model_async()
             ai_response = await generate_content_async(rotated_model, context)
-            chat_logger.info("Gemini AI response received")
+            chat_logger.info("Gemini AI response received", response_length=len(ai_response))
 
             if not ai_response:
                 chat_logger.error("No response from Gemini AI")
                 raise HTTPException(status_code=500, detail="No response from AI")
 
             ai_response = ai_response.strip()
-            chat_logger.info("Gemini AI response received", 
-                           response_length=len(ai_response))
 
             # Clean and validate JSON response
             cleaned_response = ai_response.strip()
@@ -506,7 +503,7 @@ class ChatService:
 
             # Validate that response contains JSON-like structure
             if '{' not in cleaned_response or '}' not in cleaned_response:
-                chat_logger.warning("Response doesn't contain JSON structure", response=ai_response)
+                chat_logger.warning("Response doesn't contain JSON structure", response_preview=ai_response[:100])
                 
                 # Fallback: create a simple question structure
                 fallback_questions = [
@@ -725,7 +722,7 @@ class ChatService:
                     correct_answer_explanation = explanation_response.strip() if explanation_response else f"Option {correct_answer_clean} is the correct answer according to the document."
 
                 except Exception as e:
-                    print(f"Error getting answer explanation: {e}")
+                    chat_logger.warning("Error getting answer explanation", error=str(e))
                     correct_answer_explanation = f"Option {correct_answer_clean} is the correct answer according to the document."
 
                 # Get the actual option texts for better feedback
@@ -872,7 +869,7 @@ class ChatService:
             )
 
         except Exception as e:
-            print(f"Error generating overall feedback: {str(e)}")
+            chat_logger.error("Error generating overall feedback", error=str(e))
             # Return basic response without AI-generated feedback
             return QuizSubmissionResponse(
                 overall_score=total_score,

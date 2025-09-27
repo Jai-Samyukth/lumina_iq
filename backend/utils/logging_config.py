@@ -49,89 +49,88 @@ class CompactFormatter(logging.Formatter):
         # Get service name from logger name
         service = record.name.split('.')[-1] if '.' in record.name else record.name
 
-        # Format message based on content
-        message = record.getMessage()
+        # Get raw message
+        raw_message = record.getMessage()
 
-        # Simplify common verbose messages
-        if "Successfully generated response" in message:
-            parts = message.split(', ')
-            length_part = next((p for p in parts if 'length:' in p), '')
-            message = f"Response generated {length_part}"
+        # Parse if structured JSON log
+        actual_message = raw_message
+        data = {}
+        try:
+            import json
+            if raw_message.startswith('{') and raw_message.endswith('}') and len(raw_message) > 10:
+                log_data = json.loads(raw_message)
+                actual_message = log_data.get('message', raw_message)
+                data = log_data.get('data', {})
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, use as is
+            actual_message = raw_message
 
-        elif "Starting PDF text extraction" in message:
-            if "file_path" in message:
-                # Extract filename from path
-                import re
-                path_match = re.search(r'([^\\\/]+\.pdf)', message)
-                if path_match:
-                    filename = path_match.group(1)
-                    message = f"Extracting: {filename}"
-                else:
-                    message = "Extracting PDF"
+        # Simplify common verbose messages using actual_message and data
+        shortened = actual_message
+
+        if actual_message == "Starting PDF text extraction":
+            file_path = data.get('file_path')
+            if file_path:
+                from pathlib import Path
+                filename = Path(file_path).name
+                shortened = f"Extracting: {filename}"
             else:
-                message = "Extracting PDF"
+                shortened = "Extracting PDF"
 
-        elif "Cache hit" in message:
-            message = "Cache hit"
+        elif actual_message == "Cache miss - extracting text from PDF":
+            shortened = "Cache miss"
 
-        elif "Cache miss" in message:
-            message = "Cache miss"
+        elif actual_message == "PDF loaded successfully":
+            pages = data.get('pages', 0)
+            shortened = f"PDF loaded ({pages} pages)"
 
-        elif "PDF loaded successfully" in message:
-            # Extract pages info if available
-            import re
-            pages_match = re.search(r'"pages": (\d+)', message)
-            if pages_match:
-                pages = pages_match.group(1)
-                message = f"PDF loaded ({pages} pages)"
+        elif actual_message == "Text extraction completed":
+            length = data.get('extracted_length', 0)
+            shortened = f"Text extracted ({length:,} chars)"
+
+        elif actual_message == "Very little text extracted":
+            length = data.get('extracted_length', 0)
+            shortened = f"Little text extracted ({length} chars)"
+
+        elif actual_message == "Successfully cached extracted text":
+            shortened = "Text cached"
+
+        elif actual_message == "Using cached text":
+            length = data.get('text_length', 0)
+            shortened = "Using cache"
+
+        elif actual_message == "Cache hit":
+            shortened = "Cache hit"
+
+        elif actual_message == "Successfully cached text":
+            shortened = "Text cached"
+
+        elif "Successfully generated response" in actual_message:
+            # For chat service
+            length = data.get('length', 0)
+            shortened = f"Response generated length: {length}"
+
+        elif actual_message == "Generating questions":
+            count = data.get('count', 0)
+            mode = data.get('mode', 'questions')
+            if count:
+                shortened = f"Generating {count} {mode} questions"
             else:
-                message = "PDF loaded"
+                shortened = "Generating questions"
 
-        elif "Text extraction completed" in message:
-            # Extract length info if available
-            import re
-            length_match = re.search(r'"extracted_length": (\d+)', message)
-            if length_match:
-                length = int(length_match.group(1))
-                message = f"Text extracted ({length:,} chars)"
-            else:
-                message = "Text extracted"
+        elif actual_message == "Gemini AI response received":
+            length = data.get('response_length', 0)
+            shortened = f"AI response ({length:,} chars)"
 
-        elif "Successfully cached text" in message:
-            message = "Text cached"
+        elif "Login successful" in actual_message:
+            shortened = "Login successful"
 
-        elif "Using cached text" in message:
-            message = "Using cache"
-
-        elif "Generating questions" in message:
-            import re
-            count_match = re.search(r'"count": (\d+)', message)
-            mode_match = re.search(r'"mode": "([^"]+)"', message)
-            if count_match and mode_match:
-                count = count_match.group(1)
-                mode = mode_match.group(1)
-                message = f"Generating {count} {mode} questions"
-            else:
-                message = "Generating questions"
-
-        elif "Gemini AI response received" in message:
-            import re
-            length_match = re.search(r'"response_length": (\d+)', message)
-            if length_match:
-                length = int(length_match.group(1))
-                message = f"AI response ({length:,} chars)"
-            else:
-                message = "AI response received"
-
-        elif "Login successful" in message:
-            message = "Login successful"
-
-        elif "API key rotation enabled" in message:
-            message = "API rotation enabled"
+        elif "API key rotation enabled" in actual_message:
+            shortened = "API rotation enabled"
 
         # Create compact log line
         level_short = record.levelname[0]  # Just first letter
-        return f"{timestamp} [{service.upper()}] {level_short}: {message}"
+        return f"{timestamp} [{service.upper()}] {level_short}: {shortened}"
 
 class DeduplicatingHandler(logging.Handler):
     """Handler that prevents duplicate log messages"""

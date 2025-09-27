@@ -23,27 +23,30 @@ class StructuredLogger:
         # Prevent duplicate handlers
         if self.logger.handlers:
             return
-            
-        # Console handler with structured format
-        console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)s | %(name)s | %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        console_handler.setFormatter(console_formatter)
         
-        # File handler for persistent logs
+        from .logging_config import CompactFormatter, DeduplicatingHandler
+        
+        # Console handler with compact format and deduplication
+        base_console = logging.StreamHandler()
+        base_console.setFormatter(CompactFormatter())
+        console_handler = DeduplicatingHandler(base_console)
+        console_handler.setLevel(getattr(logging, self.log_level))
+        self.logger.addHandler(console_handler)
+        
+        # File handler for persistent logs with full details
         file_handler = logging.FileHandler(
-            f'logs/{name}_{datetime.now().strftime("%Y%m%d")}.log'
+            f'logs/{name}_{datetime.now().strftime("%Y%m%d")}.log',
+            encoding='utf-8'
         )
         file_formatter = logging.Formatter(
             '%(asctime)s | %(levelname)s | %(name)s | %(funcName)s:%(lineno)d | %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         file_handler.setFormatter(file_formatter)
-        
-        self.logger.addHandler(console_handler)
+        file_handler.setLevel(getattr(logging, self.log_level))
         self.logger.addHandler(file_handler)
+        
+        self.logger.propagate = False
     
     def _format_message(self, message: str, **kwargs) -> str:
         """Format message with optional structured data"""
