@@ -1,240 +1,404 @@
-# The entire software project is a comprehensive AI-powered learning assistant called \*\*Lumina IQ\*\* that enables users to interact with PDF documents through multiple learning modalities. Below is a detailed explanation of its architecture, components, and functionality.
+# Lumina IQ - AI-Powered Learning Assistant
+
+## 🚀 Complete Installation & Setup Guide
+
+Lumina IQ is a comprehensive AI-powered learning platform that enables users to interact with PDF documents through multiple learning modalities. This guide provides complete instructions for development setup and production deployment.
+
+## 📋 Prerequisites & System Requirements
+
+### Software Requirements
+- **Python**: 3.11.9+ (recommended) or 3.10+
+- **Node.js**: 18.17.0+ or 20+
+- **npm**: 9.6.7+ or yarn 1.22+
+- **Git**: For version control
+
+### Minimum Hardware Requirements
+- **CPU**: 4+ cores (8+ recommended for high concurrency)
+- **RAM**: 8GB+ (16GB+ recommended for optimal performance)
+- **Storage**: 10GB+ free space for PDF storage and caching
+- **OS**: Windows Server 2019+ or Linux (Ubuntu 20.04+ recommended)
+
+### Network Requirements
+- Port 8000 open for backend API
+- Port 3000 open for frontend (development)
+- Internet access for Google Gemini API calls
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend API   │
+│   (Next.js)     │◄──►│   (FastAPI)     │
+└─────────────────┘    └─────────────────┘
+        │                      │
+        ▼                      ▼
+┌─────────────────┐    ┌─────────────────┐
+│   User Browser  │    │   Gemini AI     │
+│                 │    │   API Service   │
+└─────────────────┘    └─────────────────┘
+```
+
+## 📁 Project Structure
+
+```
+lumina-iq/
+├── backend/                 # FastAPI backend
+│   ├── config/             # Configuration settings
+│   ├── routes/             # API endpoints
+│   ├── services/           # Business logic
+│   ├── utils/              # Utility functions
+│   ├── main.py            # Main application entry
+│   ├── requirements.txt    # Python dependencies
+│   └── .gitignore         # Git ignore rules
+├── frontend/               # Next.js frontend
+│   ├── src/               # Source code
+│   ├── public/            # Static assets
+│   ├── package.json       # Node.js dependencies
+│   └── .env.example      # Environment template
+├── api_rotation/          # API key management
+│   ├── api_key_rotator.py # Key rotation logic
+│   └── README.md          # API key setup guide
+└── README.md             # This file
+```
+
+## 🔧 Complete Installation & Setup
 
-# 
+### Step 1: Backend Setup
 
-# \## Overview
+#### 1.1 Install Python and Create Virtual Environment
 
-# Lumina IQ is a full-stack web application built with:
+```bash
+# Check Python version (requires 3.11.9+)
+python --version
 
-# \- \*\*Backend\*\*: Python FastAPI (version 1.0.0) serving as the API layer
+# Navigate to backend directory
+cd backend
 
-# \- \*\*Frontend\*\*: Next.js with TypeScript and Tailwind CSS for the user interface
+# Create virtual environment (recommended)
+python -m venv venv
 
-# \- \*\*AI Integration\*\*: Google Gemini for natural language processing and document understanding
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+```
 
-# \- \*\*Additional Components\*\*: API key rotation system, caching layer, and logging framework
+#### 1.2 Install Python Dependencies
 
-# 
+```bash
+# Install core dependencies
+pip install -r requirements.txt
 
-# \## Core Architecture
+# For production performance on Unix systems (optional but recommended):
+pip install uvloop httptools
 
-# 
+# For Windows systems, install additional performance packages:
+pip install pywin32
+```
 
-# \### Backend (FastAPI)
+#### 1.3 Configure Environment Variables
 
-# The backend handles all server-side logic and API endpoints:
+```bash
+# Copy environment template
+cp .env.example .env
 
-# 
+# Edit .env file with your configuration
+# Required: Add your Gemini API keys
+# Required: Change security keys for production
+```
 
-# \#### Authentication Service (`backend/routes/auth.py`)
+#### 1.4 Required Environment Variables (.env)
 
-# \- Simple verification endpoint `/verify`
+```env
+# Server Configuration
+Server Configuration in backend/config.py
+```
 
-# \- Manages user authentication state
+### Step 2: Frontend Setup
 
-# 
+#### 2.1 Install Node.js and npm
 
-# \#### PDF Service (`backend/routes/pdf.py`)  
+```bash
+# Check Node.js version (requires 18.17.0+)
+node --version
+npm --version
 
-# \- File upload handling with validation
+# Navigate to frontend directory
+cd frontend
+```
 
-# \- PDF text extraction and metadata parsing
+#### 2.2 Install Dependencies
 
-# \- PDF listing and selection
+```bash
+# Install all dependencies
+npm install
 
-# \- Cache management and clearing
+# Alternative with yarn (if preferred)
+yarn install
+```
 
-# \- Error handling for unsupported formats
+#### 2.3 Configure Environment Variables
 
-# 
+```bash
+# Copy environment template
+cp .env.example .env
 
-# \#### Chat Service (`backend/routes/chat.py`)
+# Edit .env file with your backend API URL
+```
 
-# \- Real-time conversation with AI about PDF content
+#### 2.4 Frontend Environment Variables (.env)
 
-# \- Chat history persistence per session
+```env
+# Backend API Configuration
+# The base URL for the backend API (including /api path)
+# For development: http://localhost:8000/api
+# For production: http://your-domain.com:8000/api
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+```
 
-# \- Question generation from PDF content
+**Important**: The frontend uses this environment variable to connect to the backend API. Make sure this URL matches your backend server address.
 
-# \- Answer evaluation and scoring
+## 🚀 Running the Application
 
-# \- Quiz generation and scoring
+### Development Mode
 
-# \- Performance monitoring and statistics
+#### Start Backend Server
 
-# \- Integration with Gemini AI models via rotated API keys
+```bash
+cd backend
 
-# 
+# Activate virtual environment if not already active
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
 
-# \#### Services Layer (`backend/services/`)
+# Start development server
+python main.py
+# or use the optimized runner:
+python run.py
+```
 
-# \- \*\*auth\_service.py\*\*: Authentication logic
+Backend will be available at: `http://localhost:8000`
+API documentation: `http://localhost:8000/docs`
 
-# \- \*\*chat\_service.py\*\*: Gemini integration, conversation management
+#### Start Frontend Server
 
-# \- \*\*pdf\_service.py\*\*: PDF processing, text extraction cache
+```bash
+cd frontend
 
-# 
+# Start development server
+npm run dev
+# or with yarn:
+yarn dev
+```
 
-# \#### Utilities (`backend/utils/`)
+Frontend will be available at: `http://localhost:3000`
 
-# \- \*\*cache.py\*\*: Caching system for PDF content and responses
+### Production Deployment
 
-# \- \*\*ip\_detector.py\*\*: Client IP detection for security
+#### Option 1: Traditional Deployment
 
-# \- \*\*logger.py\*\*: Structured logging with multiple log files
+##### Backend (Using Gunicorn for production)
 
-# \- \*\*security.py\*\*: Security utilities and IP filtering
+```bash
+cd backend
 
-# \- \*\*storage.py\*\*: File storage management
+# Install Gunicorn
+pip install gunicorn
 
-# 
+# Start production server with multiple workers
+gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
-# \### API Key Rotation System (`api\_rotation/`)
+# Or use the provided run script:
+python run.py
+```
 
-# A sophisticated system to manage multiple Gemini API keys:
+##### Frontend (Build and serve)
 
-# \- Automatic rotation across requests to avoid rate limits
+```bash
+cd frontend
 
-# \- Thread-safe implementation for concurrent users
+# Build for production
+npm run build
 
-# \- Persistent state storage across application restarts
+# Start production server
+npm start
+```
 
-# \- Fault-tolerant handling of invalid/missing keys
+#### Option 2: Docker Deployment
 
-# \- Monitoring endpoint to check rotation status
+Create `docker-compose.yml`:
 
-# 
+```yaml
+version: '3.8'
 
-# \### Frontend (Next.js)
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ./uploaded_books:/app/uploaded_books
+      - ./cache:/app/cache
 
-# The frontend provides an intuitive learning interface:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://backend:8000/api
+```
 
-# 
+## 🔍 Verification & Testing
 
-# \#### Authentication (`frontend/src/app/login/page.tsx`)
+### Verify Backend Installation
 
-# \- User login with form validation
+```bash
+# Test backend health
+curl http://localhost:8000/
 
-# \- Integration with backend authentication
+# Expected response: {"message":"Learning App API is running"}
 
-# 
+# Test API endpoints
+curl http://localhost:8000/api/auth/verify
 
-# \#### Chat Interface (`frontend/src/app/chat/page.tsx`)
+# Check API documentation
+# Open in browser: http://localhost:8000/docs
+```
 
-# \- Real-time conversation with AI
+### Verify Frontend Installation
 
-# \- Markdown-supported responses with syntax highlighting
+```bash
+# Test frontend build
+npm run build
 
-# \- Copy-to-clipboard functionality
+# Check for any build errors
+```
 
-# \- Mobile-responsive design with collapsible sidebar
+### Verify Backend-Frontend Connection
 
-# \- Loading states and error handling
+1. Start both backend and frontend servers
+2. Open browser to `http://localhost:3000`
+3. Check browser developer console for any connection errors
+4. Test login functionality
+5. Test PDF upload functionality
 
-# 
+## 🛠️ Troubleshooting
 
-# \#### Additional Learning Features (`frontend/src/app/{notes,qa,answer-questions}`)
+### Common Installation Issues
 
-# \- \*\*Notes\*\*: Review session notes and summaries
+#### Python Version Issues
 
-# \- \*\*Q\&A Generation\*\*: Generate questions from PDF content  
+**Problem**: Backend won't start due to Python version
+**Solution**: Use Python 3.11.9+ or 3.10+
 
-# \- \*\*Quiz System\*\*: Take quizzes and get evaluations
+```bash
+# Check Python version
+python --version
 
-# 
+# Install specific Python version (using pyenv)
+pyenv install 3.11.9
+pyenv local 3.11.9
+```
 
-# \#### Components and Architecture
+#### Dependency Installation Issues
 
-# \- \*\*AuthContext\*\*: Global authentication state management
+**Problem**: `pip install -r requirements.txt` fails
+**Solution**: 
 
-# \- \*\*Protected Route\*\*: Route guards for authenticated sections
+```bash
+# Upgrade pip first
+pip install --upgrade pip
 
-# \- \*\*LoadingBox\*\*: Consistent loading indicators
+# Try installing with no cache
+pip install --no-cache-dir -r requirements.txt
 
-# \- \*\*DataCleaner\*\*: Response processing and formatting
+# Or install dependencies one by one
+pip install fastapi uvicorn python-multipart
+```
 
-# 
+#### Port Conflicts
 
-# \### Caching and Performance
+**Problem**: Port 8000 or 3000 already in use
+**Solution**: 
 
-# \- \*\*Cache System\*\*: MD5-hashed PDF content storage
+```bash
+# Find processes using port
+netstat -ano | findstr :8000  # Windows
+lsof -i :8000                # Linux/Mac
 
-# \- \*\*Performance Monitoring\*\*: Request timing and statistics
+# Kill the process or use different ports
+# Change in .env: PORT=8001
+```
 
-# \- \*\*Logging\*\*: Daily rotation logs for monitoring
+#### Frontend Connection Issues
 
-# \- \*\*Worker Management\*\*: Gunicorn-compatible for production scaling
+**Problem**: Frontend can't connect to backend
+**Solution**: 
 
-# 
+1. Verify backend URL in frontend `.env` file
+2. Check backend is running on correct port
+3. Verify CORS configuration in backend
+4. Check firewall settings
 
-# \### Data Flow
+```bash
+# Test backend connectivity from frontend directory
+curl http://localhost:8000/
+```
 
-# 1\. \*\*PDF Upload\*\*: User uploads PDF → Backend extracts text → Cached in file system
 
-# 2\. \*\*AI Interaction\*\*: User asks question → Request routed through API key rotation → Gemini processes with PDF context → Response cached and returned
 
-# 3\. \*\*Learning Activities\*\*: Questions/quiz generated → User answers → AI evaluates → Progress tracked
+### Performance Issues
 
-# 
+- Increase worker count for higher concurrency
+- Monitor memory usage during PDF processing
+- Check network connectivity to Gemini API
+- Use `uvloop` and `httptools` on Unix systems for better performance
 
-# \### Security Features
+## 📞 Support & Maintenance
 
-# \- Remote IP detection and logging
+### Regular Maintenance Tasks
 
-# \- API key masking in logs
+1. **Dependency Updates**: Regularly update Python and Node.js dependencies
+2. **Log Rotation**: Monitor and manage log file sizes in `backend/logs/`
+3. **Storage Management**: Clean up old cached files and uploaded PDFs
+4. **API Key Rotation**: Regularly rotate Gemini API keys using the API rotation system
 
-# \- File type validation
+### Emergency Procedures
 
-# \- Session management
+1. **Service Outage**: Restart backend and frontend services
+2. **API Limit Exceeded**: Add more API keys or wait for quota reset
+3. **Storage Full**: Clear cache directory and old uploaded files
 
-# \- Rate limiting through API key rotation
+## 📋 Deployment Checklist
 
-# 
+- [ ] Python 3.11.9+ installed and verified
+- [ ] Node.js 18.17.0+ installed and verified
+- [ ] Backend dependencies installed (`pip install -r requirements.txt`)
+- [ ] Frontend dependencies installed (`npm install`)
+- [ ] Environment variables configured for both backend and frontend
+- [ ] Gemini API keys set up and tested
+- [ ] Required directories created (`uploaded_books`, `cache`, `logs`)
+- [ ] CORS origins properly configured
+- [ ] Backend server starts successfully on port 8000
+- [ ] Frontend server starts successfully on port 3000
+- [ ] Frontend can connect to backend API
+- [ ] Basic functionality tested (login, PDF upload, chat)
 
-# \### Deployment Considerations
+## 🎯 Post-Installation Verification
 
-# \- \*\*Windows/Unix\*\*: Platform-specific optimizations (asyncio, uvloop)
+1. **Backend Health**: `curl http://localhost:8000/` should return success
+2. **Frontend Access**: Access `http://localhost:3000` in browser
+3. **Authentication**: Test login functionality
+4. **PDF Upload**: Upload and process a test PDF
+5. **AI Interaction**: Test chat functionality with PDF content
+6. **API Documentation**: Verify `http://localhost:8000/docs` is accessible
 
-# \- \*\*Docker\*\*: Prepared with individual directories
+---
 
-# \- \*\*Production\*\*: Multiple worker support with logging
+**Note**: For development-specific instructions and advanced configuration, refer to individual component README files in each directory.
 
-# \- \*\*Caching\*\*: File-based cache with hashing for performance
-
-# 
-
-# \### Directory Structure Analysis
-
-# \- \*\*`backend/`\*\*: Main FastAPI application
-
-# \- \*\*`frontend/`\*\*: Next.js React application  
-
-# \- \*\*`api\_rotation/`\*\*: Standalone API key management system
-
-# \- \*\*`books/`\*\*: Sample PDF documents for learning
-
-# \- \*\*`learning/`\*\*: Development/backup directory with similar structure
-
-# \- \*\*`cache/`\*\*: Shared cache files from backend processing
-
-# \- \*\*`logs/`\*\*: Application logs categorized by service and date
-
-# 
-
-# \## Key Features and Benefits
-
-# \- \*\*Multi-modal Learning\*\*: Chat, Q\&A generation, quiz evaluation, notes
-
-# \- \*\*Scalable Architecture\*\*: Modular services with clear separation of concerns
-
-# \- \*\*Performance Optimized\*\*: Caching, async processing, concurrent handling
-
-# \- \*\*User-Friendly Interface\*\*: Mobile-responsive with smooth interactions
-
-# \- \*\*Robust Logging\*\*: Comprehensive monitoring and debugging capabilities
-
-# 
-
-# This architecture provides a solid foundation for an AI-powered learning platform that can handle multiple concurrent users while maintaining responsive performance and security.
-
+**Support**: If you encounter issues during installation, check the troubleshooting section above or review the logs in `backend/logs/` for detailed error information
