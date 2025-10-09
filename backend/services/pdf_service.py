@@ -10,7 +10,9 @@ from utils.storage import pdf_contexts, pdf_metadata, storage_manager, storage_m
 from utils.cache import cache_service
 from utils.logger import pdf_logger
 from models.pdf import PDFInfo, PDFListResponse, PDFUploadResponse, PDFMetadata
+from services.rag_service import rag_service
 import warnings
+import asyncio
 
 # Suppress PyPDF2 warnings when it's imported
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="PyPDF2")
@@ -204,11 +206,25 @@ class PDFService:
             })
             storage_manager.safe_set(pdf_metadata, token, metadata)
             
+            # Index document for RAG with duplicate detection
+            pdf_logger.info("Starting RAG indexing for selected PDF", filename=filename)
+            indexing_result = await rag_service.index_document(
+                filename=filename, 
+                content=text_content, 
+                token=token,
+                file_path=str(file_path)
+            )
+            pdf_logger.info("RAG indexing completed", 
+                          filename=filename, 
+                          result=indexing_result.get("status"),
+                          is_duplicate=indexing_result.get("status") == "duplicate")
+            
             return {
                 "message": "PDF selected successfully",
                 "filename": filename,
                 "metadata": metadata,
-                "text_length": len(text_content)
+                "text_length": len(text_content),
+                "rag_indexing": indexing_result.get("status", "unknown")
             }
             
         except Exception as e:
@@ -263,12 +279,29 @@ class PDFService:
             })
             storage_manager.safe_set(pdf_metadata, token, metadata)
 
-            return PDFUploadResponse(
-                message="PDF uploaded and processed successfully",
+            # Index document for RAG with duplicate detection
+            pdf_logger.info("Starting RAG indexing for uploaded PDF", filename=unique_filename)
+            indexing_result = await rag_service.index_document(
+                filename=unique_filename, 
+                content=text_content, 
+                token=token,
+                file_path=str(file_path)
+            )
+            pdf_logger.info("RAG indexing completed", 
+                          filename=unique_filename, 
+                          result=indexing_result.get("status"),
+                          is_duplicate=indexing_result.get("status") == "duplicate")
+            
+            # Add indexing info to response
+            response_data = PDFUploadResponse(
+                message="PDF uploaded and processed successfully" if indexing_result.get("status") != "duplicate" 
+                        else f"PDF uploaded successfully. {indexing_result.get('message')}",
                 filename=unique_filename,
                 metadata=metadata,
                 text_length=len(text_content)
             )
+            
+            return response_data
 
         except Exception as e:
             # Clean up file if processing failed

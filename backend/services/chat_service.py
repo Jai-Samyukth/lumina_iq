@@ -6,6 +6,9 @@ from datetime import datetime
 from fastapi import HTTPException
 from config.settings import settings
 from utils.storage import pdf_contexts, chat_histories, storage_manager
+from services.rag_service import rag_service
+from services.advanced_rag_service import advanced_rag_service
+from services.qa_generation_service import qa_generation_service
 from models.chat import (
     ChatMessage,
     ChatResponse,
@@ -241,37 +244,66 @@ class ChatService:
 
         chat_history = safe_storage_access(init_chat_history, token)
 
-        # Check if this is a Q&A generation request (needs full content)
-        is_qa_generation = any(keyword in message.message.lower() for keyword in [
-            'generate', 'create', 'analyze this document', 'questions', 'sections', 'comprehensive'
-        ])
-
-        # Use more content for Q&A generation, limited content for regular chat
-        content_limit = 50000 if is_qa_generation else 15000
-        pdf_content = pdf_context['content'][:content_limit]
-
-        # Add indication if content was truncated
-        content_suffix = "..." if len(pdf_context['content']) > content_limit else ""
-
         # Get recent chat history safely
         def get_recent_history():
             return chat_histories[token][-3:] if token in chat_histories else []
 
         recent_history = safe_storage_access(get_recent_history, token)
 
+        # Use RAG to retrieve relevant context
+        chat_logger.info("Retrieving relevant context using RAG", query_length=len(message.message))
+        
+        use_rag = True
+        rag_error_message = None
+        
+        try:
+            rag_result = await rag_service.retrieve_context(
+                query=message.message,
+                token=token,
+                filename=pdf_context['filename'],
+                top_k=5
+            )
+
+            # Check if we got relevant context
+            if rag_result['status'] != 'success' or not rag_result['context']:
+                chat_logger.warning("No relevant context found, falling back to full content preview")
+                use_rag = False
+                rag_error_message = rag_result.get('message', 'No relevant context found')
+            else:
+                content_info = f"Relevant Content:\n{rag_result['context']}"
+                chat_logger.info(f"Using RAG context with {rag_result['num_chunks']} chunks")
+        except Exception as rag_error:
+            error_str = str(rag_error).lower()
+            chat_logger.warning("RAG retrieval failed, falling back to full content", error=str(rag_error))
+            use_rag = False
+            
+            # Check if it's a quota error
+            if 'quota' in error_str or 'exhausted' in error_str or '429' in error_str:
+                rag_error_message = "Embedding API quota exhausted. Using full document content instead."
+            else:
+                rag_error_message = f"RAG unavailable: {str(rag_error)[:100]}"
+        
+        # Fallback to limited full content if RAG fails
+        if not use_rag:
+            pdf_content = pdf_context['content'][:8000]  # Increased limit for better context
+            content_info = f"Content Preview (first 8000 chars): {pdf_content}..."
+            if rag_error_message and 'quota' in rag_error_message.lower():
+                chat_logger.info("Using full content fallback due to quota exhaustion")
+
         # Prepare context for Gemini
         context = f"""
         You are an AI assistant helping students learn from their selected PDF document.
 
         Document: {pdf_context['filename']}
-        Content: {pdf_content}{content_suffix}
+        {content_info}
 
         Previous conversation:
         {chr(10).join([f"User: {msg['user']}{chr(10)}Assistant: {msg['assistant']}" for msg in recent_history])}
 
         Current question: {message.message}
 
-        Please provide a helpful, educational response based on the document content and conversation history.
+        Please provide a helpful, educational response based on the relevant document content and conversation history.
+        Focus on the most relevant information provided above.
         """
 
         try:
@@ -374,13 +406,156 @@ class ChatService:
         if len(full_content.strip()) < 100:
             raise HTTPException(status_code=400, detail="Document content is too short to generate meaningful questions")
 
-        # Prepare context for Gemini with full content
-        topic_instruction = ""
+        # Use ULTRA-ADVANCED Q&A GENERATION with HyDE + Multi-technique RAG
+        # Combines: HyDE, Multi-query, Reranking, Diversity, Answer Synthesis, Validation
+        use_qa_generation_service = True
+        
         if topic and topic.strip():
-            topic_instruction = f"""
+            chat_logger.info("Using QA GENERATION SERVICE with HyDE for topic-specific content", topic=topic)
+            
+            if use_qa_generation_service:
+                try:
+                    # Use QA Generation Service (HyDE + Advanced RAG + Synthesis)
+                    qa_result = await qa_generation_service.generate_qa_with_advanced_rag(
+                        topic=topic,
+                        token=token,
+                        filename=pdf_context['filename'],
+                        num_questions=count,
+                        difficulty="mixed",  # Generate mixed difficulty levels
+                        question_types=["factual", "conceptual", "analytical", "applied"]
+                    )
+                    
+                    if qa_result['status'] in ['success', 'fallback'] and qa_result['enhanced_context']:
+                        document_content = qa_result['enhanced_context']
+                        metadata = qa_result['metadata']
+                        difficulty_info = qa_result.get('difficulty_analysis', {})
+                        
+                        chat_logger.info(
+                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks",
+                            hyde_chunks=metadata.get('hyde_chunks', 0),
+                            advanced_chunks=metadata.get('advanced_rag_chunks', 0),
+                            avg_relevance=f"{metadata.get('avg_relevance', 0):.2f}",
+                            confidence=f"{metadata.get('synthesis_confidence', 0):.2f}"
+                        )
+                        
+                        topic_instruction = f"""
         SPECIFIC TOPIC FOCUS: "{topic.strip()}"
-        Focus your questions specifically on this topic, but use the full document content as context to ensure accuracy and completeness.
+        Focus your questions specifically on this topic using the ULTRA-HIGH-QUALITY content below.
+        
+        ADVANCED CONTENT ANALYSIS:
+        ✓ Retrieval Method: HyDE (Hypothetical Document Embeddings) + Multi-Query RAG
+        ✓ Total Chunks: {metadata.get('total_chunks', 0)} (HyDE: {metadata.get('hyde_chunks', 0)}, Advanced RAG: {metadata.get('advanced_rag_chunks', 0)})
+        ✓ Average Relevance Score: {metadata.get('avg_relevance', 0):.2f}
+        ✓ Average Information Density: {metadata.get('avg_density', 0):.1f}
+        ✓ Synthesis Confidence: {metadata.get('synthesis_confidence', 0):.1%}
+        ✓ Content Difficulty: {difficulty_info.get('difficulty', 'medium')}
+        ✓ Recommended Bloom's Levels: {', '.join(difficulty_info.get('levels', ['Understanding', 'Applying']))}
+        
+        QUESTION GENERATION STRATEGY:
+        - Each chunk is tagged with its relevance score and information density
+        - Chunks from HyDE capture answer-like content (better for factual questions)
+        - Chunks from Advanced RAG ensure comprehensive topic coverage
+        - Prioritize chunks with higher relevance scores for core concepts
+        - Use chunks with higher density scores for detailed, fact-based questions
+        - Generate questions across all Bloom's taxonomy levels
+        - Ensure questions are specific, clear, and directly answerable from the content
         """
+                    else:
+                        raise Exception("QA Generation Service returned no results")
+                        
+                except Exception as e:
+                    chat_logger.warning(f"Advanced RAG failed, falling back to basic: {e}")
+                    # Fallback to basic RAG
+                    rag_result = await rag_service.retrieve_context(
+                        query=f"Generate questions about: {topic}",
+                        token=token,
+                        filename=pdf_context['filename'],
+                        top_k=12
+                    )
+                    
+                    if rag_result['status'] == 'success' and rag_result['context']:
+                        document_content = rag_result['context']
+                        topic_instruction = f"""
+        SPECIFIC TOPIC FOCUS: "{topic.strip()}"
+        Focus your questions specifically on this topic using the relevant content provided below.
+        """
+                    else:
+                        document_content = full_content[:50000]
+                        topic_instruction = f"""
+        SPECIFIC TOPIC FOCUS: "{topic.strip()}"
+        Focus your questions specifically on this topic.
+        """
+            else:
+                # Basic RAG
+                rag_result = await rag_service.retrieve_context(
+                    query=f"Generate questions about: {topic}",
+                    token=token,
+                    filename=pdf_context['filename'],
+                    top_k=8
+                )
+                
+                if rag_result['status'] == 'success' and rag_result['context']:
+                    document_content = rag_result['context']
+                    chat_logger.info(f"Using basic RAG with {rag_result['num_chunks']} chunks")
+                    topic_instruction = f"""
+        SPECIFIC TOPIC FOCUS: "{topic.strip()}"
+        Focus your questions specifically on this topic using the relevant content provided below.
+        """
+                else:
+                    document_content = full_content[:50000]
+                    topic_instruction = f"""
+        SPECIFIC TOPIC FOCUS: "{topic.strip()}"
+        Focus your questions specifically on this topic.
+        """
+        else:
+            # For general questions, use QA Generation Service with comprehensive mode
+            chat_logger.info("Using QA GENERATION SERVICE for comprehensive question generation")
+            
+            if use_qa_generation_service:
+                try:
+                    qa_result = await qa_generation_service.generate_qa_with_advanced_rag(
+                        topic="comprehensive document coverage for educational assessment",
+                        token=token,
+                        filename=pdf_context['filename'],
+                        num_questions=count,
+                        difficulty="mixed",
+                        question_types=["factual", "conceptual", "analytical", "applied"]
+                    )
+                    
+                    if qa_result['status'] in ['success', 'fallback'] and qa_result['enhanced_context']:
+                        document_content = qa_result['enhanced_context']
+                        metadata = qa_result['metadata']
+                        difficulty_info = qa_result.get('difficulty_analysis', {})
+                        
+                        chat_logger.info(
+                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks",
+                            hyde_chunks=metadata.get('hyde_chunks', 0),
+                            confidence=f"{metadata.get('synthesis_confidence', 0):.2f}"
+                        )
+                        
+                        topic_instruction = f"""
+        COMPREHENSIVE COVERAGE: Generate questions covering the full scope of the document.
+        
+        ADVANCED CONTENT ANALYSIS:
+        ✓ Retrieval Method: HyDE + Multi-Query RAG (Comprehensive Mode)
+        ✓ Total Chunks: {metadata.get('total_chunks', 0)}
+        ✓ Average Relevance: {metadata.get('avg_relevance', 0):.2f}
+        ✓ Average Density: {metadata.get('avg_density', 0):.1f}
+        ✓ Synthesis Confidence: {metadata.get('synthesis_confidence', 0):.1%}
+        ✓ Content Difficulty: {difficulty_info.get('difficulty', 'medium')}
+        
+        Distribute questions across multiple topics and all Bloom's taxonomy levels.
+        Ensure broad coverage of the document's major themes and concepts.
+        """
+                    else:
+                        raise Exception("QA Generation Service returned no results")
+                except Exception as e:
+                    chat_logger.warning(f"QA Generation Service failed for comprehensive mode: {e}")
+                    document_content = full_content[:50000]
+                    topic_instruction = ""
+            else:
+                document_content = full_content[:50000]
+                topic_instruction = ""
 
         # Format instructions based on mode
         if mode == "quiz":
@@ -437,31 +612,52 @@ class ChatService:
         """
 
         context = f"""
-        You are an educational AI assistant. Analyze the following document content and create comprehensive questions for learning.
+        You are an expert educational AI assistant with advanced content analysis capabilities. 
+        Analyze the following HIGH-QUALITY, CURATED document content and create comprehensive questions for learning.
 
         Document: {pdf_context['filename']}
         {topic_instruction}
 
-        FULL DOCUMENT CONTENT:
-        {full_content}
+        DOCUMENT CONTENT (CURATED WITH ADVANCED RAG):
+        The following content has been carefully selected using:
+        - Multi-Query Retrieval: Multiple query variations for comprehensive coverage
+        - Intelligent Reranking: Sorted by relevance and information density
+        - Diversity Sampling: Ensures varied perspectives and topics
+        
+        Each chunk includes metadata showing its relevance score and information density.
+        Focus on chunks with higher scores for more important concepts.
+        
+        {document_content}
 
-        TASK: Create exactly {count} educational questions based on the document content above{' focusing on the specified topic' if topic and topic.strip() else ''}.
+        TASK: Create exactly {count} educational questions based on the HIGH-QUALITY document content above{' focusing on the specified topic' if topic and topic.strip() else ''}.
 
         REQUIREMENTS:
-        1. Read and analyze the ENTIRE document content provided above
-        2. {'Focus specifically on the topic: "' + topic.strip() + '" while using the full document as context' if topic and topic.strip() else 'Create questions that cover the full scope of the document'}
-        3. Generate Question according to Blooms Taxonomoy of Analyzing, Understanding, Remembering, Evaluating and Creating. Distribute the questions across multiple levels of Bloom's Taxonomy (Remembering, Understanding, Applying, Analyzing, Evaluating, Creating).
-        4. Include questions about:
-           - Key concepts and definitions from the text
-           - Important details and facts mentioned
-           - Practical applications discussed
-           - Examples and case studies provided
-           - Critical thinking questions about the content
-           - Main themes and ideas
-           - Specific processes or methods described
-           - Important people, places, or events mentioned
-           - Cause and effect relationships
-           - Comparisons and contrasts made in the text
+        1. Analyze the CURATED document content above - these are the most relevant and information-dense sections
+        2. {'Focus specifically on the topic: "' + topic.strip() + '" while using the curated content as your primary source' if topic and topic.strip() else 'Create questions that cover the full scope of the curated content'}
+        3. BLOOM'S TAXONOMY DISTRIBUTION - Generate questions across ALL levels:
+           - Remembering (20%): Recall facts, terms, basic concepts
+           - Understanding (20%): Explain ideas, summarize information
+           - Applying (20%): Use information in new situations
+           - Analyzing (20%): Draw connections, examine relationships
+           - Evaluating (10%): Justify decisions, critique ideas
+           - Creating (10%): Generate new ideas, design solutions
+        
+        4. QUESTION DIVERSITY - Include questions about:
+           - Key concepts and definitions from the text (with specific examples)
+           - Important details and facts mentioned (numbers, dates, names)
+           - Practical applications discussed (real-world use cases)
+           - Examples and case studies provided (with context)
+           - Critical thinking questions about the content (analysis)
+           - Main themes and ideas (big picture)
+           - Specific processes or methods described (step-by-step)
+           - Important people, places, or events mentioned (proper nouns)
+           - Cause and effect relationships (reasoning)
+           - Comparisons and contrasts made in the text (similarities/differences)
+        
+        5. LEVERAGE CHUNK METADATA:
+           - Chunks with higher relevance scores contain more important information
+           - Chunks with higher information density contain more facts and details
+           - Prioritize these chunks when creating questions
 
         {format_instruction}
 
@@ -552,6 +748,22 @@ class ChatService:
 
         pdf_context = safe_storage_access(get_pdf_context, token)
 
+        # Use RAG to get relevant content for evaluation
+        rag_result = await rag_service.retrieve_context(
+            query=request.question,
+            token=token,
+            filename=pdf_context['filename'],
+            top_k=3
+        )
+        
+        if rag_result['status'] == 'success' and rag_result['context']:
+            relevant_content = rag_result['context']
+            chat_logger.info("Using RAG context for answer evaluation")
+        else:
+            # Fallback to limited content
+            relevant_content = pdf_context['content'][:10000]
+            chat_logger.warning("Using fallback content for evaluation")
+
         # Get evaluation level settings
         evaluation_level = request.evaluation_level or "medium"
 
@@ -618,7 +830,7 @@ class ChatService:
         You are an expert educational evaluator. Your task is to evaluate a student's answer to a question based on the provided document content.
 
         Document: {pdf_context['filename']}
-        Document Content: {pdf_context['content'][:20000]}
+        Relevant Document Content: {relevant_content}
 
         Question: {request.question}
         Student's Answer: {request.user_answer}
@@ -701,12 +913,25 @@ class ChatService:
                 # We need to get the actual answer text from the question to provide meaningful feedback
                 # For now, we'll use AI to get the correct answer explanation
                 try:
+                    # Get relevant content for explanation using RAG
+                    explanation_rag = await rag_service.retrieve_context(
+                        query=answer.question,
+                        token=token,
+                        filename=pdf_context['filename'],
+                        top_k=2
+                    )
+                    
+                    if explanation_rag['status'] == 'success':
+                        explanation_content = explanation_rag['context']
+                    else:
+                        explanation_content = pdf_context['content'][:10000]
+                    
                     # Get the correct answer explanation using AI
                     explanation_context = f"""
                     You are an educational AI providing feedback on a multiple choice question.
 
                     Document: {pdf_context['filename']}
-                    Document Content: {pdf_context['content'][:15000]}
+                    Relevant Document Content: {explanation_content}
 
                     Question: {answer.question}
                     Correct Answer: Option {correct_answer_clean}

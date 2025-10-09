@@ -23,7 +23,12 @@ class Settings:
     
     # Gemini AI
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyBiKBADQGhRuFn5glEU-frmORFc0KRleVQ')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-lite')
+    
+    # Qdrant Cloud Configuration
+    QDRANT_URL = os.getenv('QDRANT_URL', 'https://1f6b3bbc-d09e-40c2-b333-0a823825f876.europe-west3-0.gcp.cloud.qdrant.io:6333')
+    QDRANT_API_KEY = os.getenv('QDRANT_API_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.O8xNwnZuHGOxo1dcIdcgKrRVZGryxKPYyGaCVyNXziQ')
+    QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'learning_app_documents')
     
     # CORS - Dynamic IP detection for development
     @property
