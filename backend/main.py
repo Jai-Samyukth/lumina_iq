@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -69,6 +69,12 @@ app.include_router(chat.router)
 @app.get("/")
 async def root():
     return {"message": "Learning App API is running"}
+
+
+# Additional health check endpoint
+@app.head("/healthz")
+async def healthz():
+    return Response(status_code=200)
 
 
 if __name__ == "__main__":
