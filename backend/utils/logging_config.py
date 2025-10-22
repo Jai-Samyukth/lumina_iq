@@ -2,6 +2,7 @@
 Enhanced logging configuration with Rich formatting and better log management.
 """
 
+import json
 import logging
 import os
 import sys
@@ -10,34 +11,38 @@ from pathlib import Path
 from typing import Optional
 
 # Suppress Google Cloud ALTS warnings at module level
-os.environ['GRPC_VERBOSITY'] = 'ERROR'
-os.environ['GRPC_TRACE'] = ''
+os.environ["GRPC_VERBOSITY"] = "ERROR"
+os.environ["GRPC_TRACE"] = ""
 
 try:
     from rich.console import Console
     from rich.logging import RichHandler
     from rich.traceback import install
     from rich.theme import Theme
+
     RICH_AVAILABLE = True
 
     # Install rich traceback handler
     install(show_locals=False)
 
     # Custom theme for better readability
-    custom_theme = Theme({
-        "info": "cyan",
-        "warning": "yellow",
-        "error": "bold red",
-        "success": "bold green",
-        "service": "bold blue",
-        "timestamp": "dim white"
-    })
+    custom_theme = Theme(
+        {
+            "info": "cyan",
+            "warning": "yellow",
+            "error": "bold red",
+            "success": "bold green",
+            "service": "bold blue",
+            "timestamp": "dim white",
+        }
+    )
 
     console = Console(theme=custom_theme)
 
 except ImportError:
     RICH_AVAILABLE = False
     console = None
+
 
 class CompactFormatter(logging.Formatter):
     """Custom formatter for more compact, readable logs"""
@@ -47,7 +52,7 @@ class CompactFormatter(logging.Formatter):
         timestamp = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
 
         # Get service name from logger name
-        service = record.name.split('.')[-1] if '.' in record.name else record.name
+        service = record.name.split(".")[-1] if "." in record.name else record.name
 
         # Get raw message
         raw_message = record.getMessage()
@@ -57,10 +62,15 @@ class CompactFormatter(logging.Formatter):
         data = {}
         try:
             import json
-            if raw_message.startswith('{') and raw_message.endswith('}') and len(raw_message) > 10:
+
+            if (
+                raw_message.startswith("{")
+                and raw_message.endswith("}")
+                and len(raw_message) > 10
+            ):
                 log_data = json.loads(raw_message)
-                actual_message = log_data.get('message', raw_message)
-                data = log_data.get('data', {})
+                actual_message = log_data.get("message", raw_message)
+                data = log_data.get("data", {})
         except (json.JSONDecodeError, TypeError):
             # Not JSON, use as is
             actual_message = raw_message
@@ -69,9 +79,10 @@ class CompactFormatter(logging.Formatter):
         shortened = actual_message
 
         if actual_message == "Starting PDF text extraction":
-            file_path = data.get('file_path')
+            file_path = data.get("file_path")
             if file_path:
                 from pathlib import Path
+
                 filename = Path(file_path).name
                 shortened = f"Extracting: {filename}"
             else:
@@ -81,22 +92,22 @@ class CompactFormatter(logging.Formatter):
             shortened = "Cache miss"
 
         elif actual_message == "PDF loaded successfully":
-            pages = data.get('pages', 0)
+            pages = data.get("pages", 0)
             shortened = f"PDF loaded ({pages} pages)"
 
         elif actual_message == "Text extraction completed":
-            length = data.get('extracted_length', 0)
+            length = data.get("extracted_length", 0)
             shortened = f"Text extracted ({length:,} chars)"
 
         elif actual_message == "Very little text extracted":
-            length = data.get('extracted_length', 0)
+            length = data.get("extracted_length", 0)
             shortened = f"Little text extracted ({length} chars)"
 
         elif actual_message == "Successfully cached extracted text":
             shortened = "Text cached"
 
         elif actual_message == "Using cached text":
-            length = data.get('text_length', 0)
+            length = data.get("text_length", 0)
             shortened = "Using cache"
 
         elif actual_message == "Cache hit":
@@ -107,19 +118,19 @@ class CompactFormatter(logging.Formatter):
 
         elif "Successfully generated response" in actual_message:
             # For chat service
-            length = data.get('length', 0)
+            length = data.get("length", 0)
             shortened = f"Response generated length: {length}"
 
         elif actual_message == "Generating questions":
-            count = data.get('count', 0)
-            mode = data.get('mode', 'questions')
+            count = data.get("count", 0)
+            mode = data.get("mode", "questions")
             if count:
                 shortened = f"Generating {count} {mode} questions"
             else:
                 shortened = "Generating questions"
 
         elif actual_message == "Gemini AI response received":
-            length = data.get('response_length', 0)
+            length = data.get("response_length", 0)
             shortened = f"AI response ({length:,} chars)"
 
         elif "Login successful" in actual_message:
@@ -131,6 +142,7 @@ class CompactFormatter(logging.Formatter):
         # Create compact log line
         level_short = record.levelname[0]  # Just first letter
         return f"{timestamp} [{service.upper()}] {level_short}: {shortened}"
+
 
 class DeduplicatingHandler(logging.Handler):
     """Handler that prevents duplicate log messages"""
@@ -160,40 +172,54 @@ class DeduplicatingHandler(logging.Handler):
         if len(self.recent_messages) > self.max_recent:
             cutoff_time = current_time - 5  # Keep last 5 seconds
             self.recent_messages = {
-                k: v for k, v in self.recent_messages.items()
-                if v > cutoff_time
+                k: v for k, v in self.recent_messages.items() if v > cutoff_time
             }
 
         self.base_handler.emit(record)
+
 
 def configure_logging():
     """Configure enhanced logging with Rich formatting"""
 
     # Only configure logging once per process
-    if hasattr(logging, '_configured_for_multiworker'):
+    if hasattr(logging, "_configured_for_multiworker"):
         return
 
     # Suppress noisy loggers
-    logging.getLogger('google.auth').setLevel(logging.WARNING)
-    logging.getLogger('google.auth.transport').setLevel(logging.WARNING)
-    logging.getLogger('google.auth._default').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    logging.getLogger('requests').setLevel(logging.WARNING)
-    logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger("google.auth").setLevel(logging.WARNING)
+    logging.getLogger("google.auth.transport").setLevel(logging.WARNING)
+    logging.getLogger("google.auth._default").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     # Get worker ID from environment
-    worker_id = os.getenv('UVICORN_WORKER_ID', '1')
+    worker_id = os.getenv("UVICORN_WORKER_ID", "1")
+
+    # Get log level and format from environment
+    log_level_str = os.getenv("LOG_LEVEL", "DEBUG").upper()
+    log_format = os.getenv("LOG_FORMAT", "text").lower()
+
+    # Map string to logging level
+    log_level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+    log_level = log_level_map.get(log_level_str, logging.DEBUG)
 
     # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(log_level)
 
     # Remove existing handlers
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
     # Set up console handler only for main worker
-    if worker_id == '1':
+    if worker_id == "1":
         if RICH_AVAILABLE:
             # Use Rich handler for better formatting
             rich_handler = RichHandler(
@@ -201,7 +227,7 @@ def configure_logging():
                 show_time=False,
                 show_path=False,
                 show_level=False,
-                rich_tracebacks=True
+                rich_tracebacks=True,
             )
             rich_handler.setFormatter(CompactFormatter())
             console_handler = DeduplicatingHandler(rich_handler)
@@ -211,31 +237,50 @@ def configure_logging():
             console_handler.setFormatter(CompactFormatter())
             console_handler = DeduplicatingHandler(console_handler)
 
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(log_level)
         root_logger.addHandler(console_handler)
 
     # Set up file handler (simplified)
-    logs_dir = Path(__file__).parent.parent / 'logs'
+    logs_dir = Path(__file__).parent.parent / "logs"
     logs_dir.mkdir(exist_ok=True)
 
-    log_file = logs_dir / f'app_{datetime.now().strftime("%Y%m%d")}.log'
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setLevel(logging.INFO)
-    file_formatter = logging.Formatter(
-        '%(asctime)s | %(levelname)s | %(name)s | %(message)s',
-        datefmt='%H:%M:%S'
-    )
+    log_file = logs_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(log_level)
+
+    # Choose formatter based on LOG_FORMAT
+    if log_format == "json":
+        # Structured JSON logging for production
+        class JSONFormatter(logging.Formatter):
+            def format(self, record):
+                log_entry = {
+                    "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+                    "level": record.levelname,
+                    "logger": record.name,
+                    "message": record.getMessage(),
+                }
+                if record.exc_info:
+                    log_entry["exception"] = self.formatException(record.exc_info)
+                return json.dumps(log_entry)
+
+        file_formatter = JSONFormatter()
+    else:
+        # Standard text formatter
+        file_formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
+        )
     file_handler.setFormatter(file_formatter)
     root_logger.addHandler(file_handler)
 
     # Configure specific loggers to prevent spam
-    logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
-    logging.getLogger('uvicorn.error').setLevel(logging.INFO)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(log_level)  # Use the same level as root
 
     # Mark as configured
     logging._configured_for_multiworker = True
 
     return worker_id
+
 
 def get_logger(name: str):
     """Get a logger with enhanced configuration"""

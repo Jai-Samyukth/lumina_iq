@@ -1,7 +1,7 @@
 # Import warning suppression first
 from utils.suppress_warnings import suppress_third_party_warnings
 
-import google.generativeai as genai
+from services.together_service import TogetherService
 from datetime import datetime
 from fastapi import HTTPException
 from config.settings import settings
@@ -16,71 +16,65 @@ from models.chat import (
     AnswerEvaluationResponse,
     QuizSubmissionRequest,
     QuizSubmissionResponse,
-    QuizAnswer
+    QuizAnswer,
 )
 import sys
 import os
 import logging
 import asyncio
 import concurrent.futures
+import json
 from threading import Lock
 from utils.logger import chat_logger
 
-# Add the parent directory to the path to import from api_rotation
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-try:
-    from api_rotation.api_key_rotator import api_key_rotator
-    ROTATION_ENABLED = True
-    # Only log once per module import to avoid duplicate logs with multiple workers
-    if not hasattr(chat_logger, '_rotation_logged'):
-        chat_logger.info("API key rotation enabled")
-        chat_logger._rotation_logged = True
-except ImportError as e:
-    if not hasattr(chat_logger, '_rotation_error_logged'):
-        chat_logger.warning("API key rotation not available", error=str(e))
-        chat_logger._rotation_error_logged = True
-    ROTATION_ENABLED = False
-
 # Thread-safe locks for concurrent access
 from collections import defaultdict
+
 user_locks = defaultdict(Lock)  # Per-user locks for better concurrency
 model_cache = {}
 model_cache_lock = Lock()
 
-# Massive thread pool for true concurrency with 25+ users
-thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=100)
+# Thread pool for concurrent operations
+thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
-# Massive thread pools optimized for 3000+ concurrent requests with 14 API keys
-ai_generation_pool = concurrent.futures.ThreadPoolExecutor(max_workers=500)  # Massive pool for 3000+ users
-model_creation_pool = concurrent.futures.ThreadPoolExecutor(max_workers=200)  # Large pool for model creation
+# Thread pools for AI operations
+ai_generation_pool = concurrent.futures.ThreadPoolExecutor(
+    max_workers=10
+)  # Reasonable pool for AI generation
+model_creation_pool = concurrent.futures.ThreadPoolExecutor(
+    max_workers=5
+)  # Small pool for model creation
 
-# Request queue optimized for 3000+ concurrent requests
+# Request queue and semaphore for rate limiting
 import queue
-request_queue = asyncio.Queue(maxsize=5000)  # Large queue for massive burst traffic
-request_semaphore = asyncio.Semaphore(20)  # Very conservative to prevent quota exhaustion
+
+request_queue = asyncio.Queue(maxsize=100)  # Reasonable queue size
+request_semaphore = asyncio.Semaphore(5)  # Conservative to prevent quota exhaustion
 
 # Performance monitoring
 import time
+
 request_times = []
 request_times_lock = Lock()
 
-# Optimized rate limiting for 14 API keys handling 3000+ requests
+# Rate limiting for API requests
 from collections import defaultdict
-api_call_times = defaultdict(list)  # Track API calls per key
+
+api_call_times = defaultdict(list)  # Track API calls
 rate_limit_lock = Lock()
-CALLS_PER_MINUTE = 1800  # 30 req/sec * 60 sec = 1800 per minute per API key
+CALLS_PER_MINUTE = 60  # Conservative rate limit per minute
 QUOTA_RESET_TIME = 60  # Reset quota tracking every minute
-# Total capacity: 14 keys * 1800 = 25,200 requests/minute = 420 requests/second!
 
 # Connection pooling for AI requests
 import aiohttp
+
 ai_session = None
 ai_session_lock = asyncio.Lock()
 
 # Global rate limiter to prevent overwhelming the API
 last_request_time = 0
-min_request_interval = 0.05  # Minimum 50ms between requests globally
+min_request_interval = 1.0  # Minimum 1 second between requests globally
+
 
 def check_rate_limit(api_key: str) -> bool:
     """Check if API key is within rate limits"""
@@ -89,12 +83,14 @@ def check_rate_limit(api_key: str) -> bool:
     with rate_limit_lock:
         # Clean old entries
         api_call_times[api_key] = [
-            call_time for call_time in api_call_times[api_key]
+            call_time
+            for call_time in api_call_times[api_key]
             if current_time - call_time < QUOTA_RESET_TIME
         ]
 
         # Check if under limit
         return len(api_call_times[api_key]) < CALLS_PER_MINUTE
+
 
 def record_api_call(api_key: str):
     """Record an API call for rate limiting"""
@@ -103,55 +99,15 @@ def record_api_call(api_key: str):
     with rate_limit_lock:
         api_call_times[api_key].append(current_time)
 
-async def get_rotated_model_async():
+
+async def generate_content_async(
+    context: str, max_retries: int = 2, priority: str = "normal"
+) -> str:
     """
-    Get a Gemini model instance optimized for 3000+ concurrent requests.
-    Uses 14 API keys with intelligent load balancing.
-    """
-    loop = asyncio.get_event_loop()
-
-    # Get API key with optimized rotation for high throughput
-    def get_high_throughput_api_key():
-        if ROTATION_ENABLED:
-            # With 14 API keys, we can be more aggressive
-            # Try a few keys to find one that's not heavily loaded
-            for attempt in range(3):  # Only try 3 times for speed
-                api_key = api_key_rotator.get_next_key()
-                if api_key and check_rate_limit(api_key):
-                    return api_key
-
-            # If all checked keys are busy, just use the next one
-            # With 14 keys, the load should be well distributed
-            api_key = api_key_rotator.get_next_key()
-            if api_key:
-                return api_key
-
-            chat_logger.warning("API rotation failed, using settings key")
-
-        return settings.GEMINI_API_KEY
-
-    api_key = await loop.run_in_executor(model_creation_pool, get_high_throughput_api_key)
-
-    if not api_key:
-        raise HTTPException(status_code=500, detail="No API key available")
-
-    # Record the API call for monitoring (but don't block on it)
-    record_api_call(api_key)
-
-    # Create model optimized for high concurrency
-    def create_model():
-        genai.configure(api_key=api_key)
-        return genai.GenerativeModel(settings.GEMINI_MODEL)
-
-    return await loop.run_in_executor(model_creation_pool, create_model)
-
-async def generate_content_async(model, context: str, max_retries: int = 2, priority: str = "normal") -> str:
-    """
-    Generate content asynchronously optimized for 25+ concurrent users.
+    Generate content asynchronously using Together.ai API.
     Uses semaphore-based throttling and dedicated thread pools.
     """
     start_time = time.time()
-    loop = asyncio.get_event_loop()
 
     # Use semaphore to limit concurrent AI requests and prevent overload
     async with request_semaphore:
@@ -166,14 +122,20 @@ async def generate_content_async(model, context: str, max_retries: int = 2, prio
         for attempt in range(max_retries):
             try:
                 # Add larger delay to spread requests across time and prevent quota exhaustion
-                await asyncio.sleep(0.1 + (hash(str(model)) % 100) / 1000)  # 0.1-0.2s spread
+                await asyncio.sleep(
+                    0.1 + (hash(context) % 100) / 1000
+                )  # 0.1-0.2s spread
 
-                # Use dedicated AI generation pool with throttling
-                response = await loop.run_in_executor(
-                    ai_generation_pool,
-                    lambda: model.generate_content(context)
+                # Record API call for rate limiting
+                api_key = settings.TOGETHER_API_KEY
+                record_api_call(api_key)
+
+                # Use TogetherService to generate response
+                response = await TogetherService.generate_chat_response(
+                    user_message=context, max_tokens=4096, temperature=0.7
                 )
-                if response and response.text:
+
+                if response:
                     # Record performance metrics
                     end_time = time.time()
                     response_time = end_time - start_time
@@ -184,28 +146,47 @@ async def generate_content_async(model, context: str, max_retries: int = 2, prio
                         if len(request_times) > 100:
                             request_times.pop(0)
 
-                    chat_logger.debug("AI response generated", response_time=f"{response_time:.2f}s", priority=priority)
-                    return response.text.strip()
+                    chat_logger.debug(
+                        f"AI response generated in {response_time:.2f}s",
+                        priority=priority,
+                    )
+                    return response.strip()
                 else:
-                    raise Exception("Empty response from AI model")
+                    raise Exception("Empty response from Together.ai")
 
             except Exception as e:
                 error_str = str(e)
                 # Check if it's a rate limit or quota error
-                if any(keyword in error_str.lower() for keyword in ['rate limit', 'quota', 'exhausted', '429']):
-                    chat_logger.warning("Rate limit/quota hit, waiting before retry", attempt=attempt + 1, error=error_str)
+                if any(
+                    keyword in error_str.lower()
+                    for keyword in ["rate limit", "quota", "exhausted", "429"]
+                ):
+                    chat_logger.warning(
+                        "Rate limit/quota hit, waiting before retry",
+                        attempt=attempt + 1,
+                        error=error_str,
+                    )
                     # Exponential backoff for rate limits
-                    wait_time = min(2.0 ** attempt, 10.0)  # Cap at 10 seconds
+                    wait_time = min(2.0**attempt, 10.0)  # Cap at 10 seconds
                     await asyncio.sleep(wait_time)
                 else:
-                    chat_logger.warning("AI generation attempt failed", attempt=attempt + 1, error=error_str)
+                    chat_logger.warning(
+                        "AI generation attempt failed",
+                        attempt=attempt + 1,
+                        error=error_str,
+                    )
                     if attempt == max_retries - 1:
-                        chat_logger.error("All AI generation attempts failed", max_retries=max_retries, error=error_str)
+                        chat_logger.error(
+                            "All AI generation attempts failed",
+                            max_retries=max_retries,
+                            error=error_str,
+                        )
                         raise
                     # Shorter retry delay for other errors
                     await asyncio.sleep(0.3 * (attempt + 1))
 
     raise Exception("Failed to generate AI response after all retries")
+
 
 def safe_storage_access(operation, token: str, *args, **kwargs):
     """
@@ -216,6 +197,7 @@ def safe_storage_access(operation, token: str, *args, **kwargs):
     with storage_manager.get_user_lock(token):
         return operation(*args, **kwargs)
 
+
 class ChatService:
     @staticmethod
     async def chat(message: ChatMessage, token: str) -> ChatResponse:
@@ -223,11 +205,17 @@ class ChatService:
         def check_pdf_context():
             if token not in pdf_contexts:
                 chat_logger.error("No PDF context found", token=token)
-                raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No PDF selected. Please select a PDF first.",
+                )
             context = pdf_contexts[token]
-            if not context or 'content' not in context:
+            if not context or "content" not in context:
                 chat_logger.error("Invalid PDF context", token=token)
-                raise HTTPException(status_code=400, detail="PDF context is invalid. Please select a PDF again.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="PDF context is invalid. Please select a PDF again.",
+                )
             return context
 
         try:
@@ -251,50 +239,63 @@ class ChatService:
         recent_history = safe_storage_access(get_recent_history, token)
 
         # Use RAG to retrieve relevant context
-        chat_logger.info("Retrieving relevant context using RAG", query_length=len(message.message))
-        
+        chat_logger.debug(
+            f"Retrieving relevant context using RAG, query length: {len(message.message)}"
+        )
+
         use_rag = True
         rag_error_message = None
-        
+
         try:
             rag_result = await rag_service.retrieve_context(
                 query=message.message,
                 token=token,
-                filename=pdf_context['filename'],
-                top_k=5
+                filename=pdf_context["filename"],
+                top_k=5,
             )
 
             # Check if we got relevant context
-            if rag_result['status'] != 'success' or not rag_result['context']:
-                chat_logger.warning("No relevant context found, falling back to full content preview")
+            if rag_result["status"] != "success" or not rag_result["context"]:
+                chat_logger.warning(
+                    "No relevant context found, falling back to full content preview"
+                )
                 use_rag = False
-                rag_error_message = rag_result.get('message', 'No relevant context found')
+                rag_error_message = rag_result.get(
+                    "message", "No relevant context found"
+                )
             else:
                 content_info = f"Relevant Content:\n{rag_result['context']}"
-                chat_logger.info(f"Using RAG context with {rag_result['num_chunks']} chunks")
+                chat_logger.debug(
+                    f"Using RAG context with {rag_result['num_chunks']} chunks"
+                )
         except Exception as rag_error:
             error_str = str(rag_error).lower()
-            chat_logger.warning("RAG retrieval failed, falling back to full content", error=str(rag_error))
+            chat_logger.warning(
+                "RAG retrieval failed, falling back to full content",
+                error=str(rag_error),
+            )
             use_rag = False
-            
+
             # Check if it's a quota error
-            if 'quota' in error_str or 'exhausted' in error_str or '429' in error_str:
+            if "quota" in error_str or "exhausted" in error_str or "429" in error_str:
                 rag_error_message = "Embedding API quota exhausted. Using full document content instead."
             else:
                 rag_error_message = f"RAG unavailable: {str(rag_error)[:100]}"
-        
+
         # Fallback to limited full content if RAG fails
         if not use_rag:
-            pdf_content = pdf_context['content'][:8000]  # Increased limit for better context
+            pdf_content = pdf_context["content"][
+                :8000
+            ]  # Increased limit for better context
             content_info = f"Content Preview (first 8000 chars): {pdf_content}..."
-            if rag_error_message and 'quota' in rag_error_message.lower():
-                chat_logger.info("Using full content fallback due to quota exhaustion")
+            if rag_error_message and "quota" in rag_error_message.lower():
+                chat_logger.debug("Using full content fallback due to quota exhaustion")
 
-        # Prepare context for Gemini
+        # Prepare context for AI
         context = f"""
         You are an AI assistant helping students learn from their selected PDF document.
 
-        Document: {pdf_context['filename']}
+        Document: {pdf_context["filename"]}
         {content_info}
 
         Previous conversation:
@@ -307,9 +308,8 @@ class ChatService:
         """
 
         try:
-            # Generate response using async Gemini with rotated API key - TRUE CONCURRENCY
-            rotated_model = await get_rotated_model_async()
-            ai_response = await generate_content_async(rotated_model, context)
+            # Generate response using Together.ai
+            ai_response = await generate_content_async(context)
 
             # Validate response
             if not ai_response or len(ai_response.strip()) < 10:
@@ -317,18 +317,21 @@ class ChatService:
 
             # Store in chat history thread-safely
             def store_chat_entry():
-                chat_histories[token].append({
-                    "user": message.message,
-                    "assistant": ai_response,
-                    "timestamp": datetime.now().isoformat()
-                })
+                chat_histories[token].append(
+                    {
+                        "user": message.message,
+                        "assistant": ai_response,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
 
             safe_storage_access(store_chat_entry, token)
 
-            chat_logger.info("Successfully generated response", token=token, length=len(ai_response))
+            chat_logger.debug(
+                f"Successfully generated response, length: {len(ai_response)}"
+            )
             return ChatResponse(
-                response=ai_response,
-                timestamp=datetime.now().isoformat()
+                response=ai_response, timestamp=datetime.now().isoformat()
             )
 
         except HTTPException:
@@ -336,21 +339,28 @@ class ChatService:
             raise
         except Exception as e:
             error_msg = str(e)
-            chat_logger.error("Failed to generate response", token=token, error=error_msg)
+            chat_logger.error(
+                "Failed to generate response", token=token, error=error_msg
+            )
 
             # Check if it's a rate limit or overload error
-            if any(keyword in error_msg.lower() for keyword in ['rate limit', 'quota', 'overload', 'timeout']):
+            if any(
+                keyword in error_msg.lower()
+                for keyword in ["rate limit", "quota", "overload", "timeout"]
+            ):
                 fallback_response = f"I'm currently experiencing high demand. Please wait a moment and try your question again. Your question about '{pdf_context.get('filename', 'the document')}' is important to me."
             else:
                 fallback_response = f"I apologize, but I'm having trouble processing your question about the document '{pdf_context.get('filename', 'the selected PDF')}' right now. Please try rephrasing your question or try again in a moment."
 
             # Store fallback in chat history
             def store_fallback_entry():
-                chat_histories[token].append({
-                    "user": message.message,
-                    "assistant": fallback_response,
-                    "timestamp": datetime.now().isoformat()
-                })
+                chat_histories[token].append(
+                    {
+                        "user": message.message,
+                        "assistant": fallback_response,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
 
             try:
                 safe_storage_access(store_fallback_entry, token)
@@ -358,8 +368,7 @@ class ChatService:
                 pass  # Don't fail if we can't store the fallback
 
             return ChatResponse(
-                response=fallback_response,
-                timestamp=datetime.now().isoformat()
+                response=fallback_response, timestamp=datetime.now().isoformat()
             )
 
     @staticmethod
@@ -381,13 +390,13 @@ class ChatService:
         return safe_storage_access(clear_history, token)
 
     @staticmethod
-    async def generate_questions(token: str, topic: str = None, count: int = 25, mode: str = "practice") -> ChatResponse:
-        chat_logger.info("Generating questions", 
-                        token=token, 
-                        topic=topic, 
-                        count=count, 
-                        mode=mode)
-        
+    async def generate_questions(
+        token: str, topic: str | None = None, count: int = 25, mode: str = "practice"
+    ) -> ChatResponse:
+        chat_logger.debug(
+            f"Generating {count} {mode} questions for topic: {topic or 'general'}"
+        )
+
         # Get PDF context thread-safely
         def get_pdf_context():
             if token not in pdf_contexts:
@@ -396,60 +405,71 @@ class ChatService:
             return pdf_contexts[token]
 
         pdf_context = safe_storage_access(get_pdf_context, token)
-        full_content = pdf_context['content']
-        
-        chat_logger.info("Processing PDF for questions", 
-                        filename=pdf_context['filename'],
-                        content_length=len(full_content))
+        full_content = pdf_context["content"]
+
+        chat_logger.debug(
+            f"Processing PDF {pdf_context['filename']} for questions, content length: {len(full_content)}"
+        )
 
         # Check if content is too short
         if len(full_content.strip()) < 100:
-            raise HTTPException(status_code=400, detail="Document content is too short to generate meaningful questions")
+            raise HTTPException(
+                status_code=400,
+                detail="Document content is too short to generate meaningful questions",
+            )
 
         # Use ULTRA-ADVANCED Q&A GENERATION with HyDE + Multi-technique RAG
         # Combines: HyDE, Multi-query, Reranking, Diversity, Answer Synthesis, Validation
         use_qa_generation_service = True
-        
+
         if topic and topic.strip():
-            chat_logger.info("Using QA GENERATION SERVICE with HyDE for topic-specific content", topic=topic)
-            
+            chat_logger.debug(
+                f"Using QA GENERATION SERVICE with HyDE for topic: {topic}"
+            )
+
             if use_qa_generation_service:
                 try:
                     # Use QA Generation Service (HyDE + Advanced RAG + Synthesis)
-                    qa_result = await qa_generation_service.generate_qa_with_advanced_rag(
-                        topic=topic,
-                        token=token,
-                        filename=pdf_context['filename'],
-                        num_questions=count,
-                        difficulty="mixed",  # Generate mixed difficulty levels
-                        question_types=["factual", "conceptual", "analytical", "applied"]
-                    )
-                    
-                    if qa_result['status'] in ['success', 'fallback'] and qa_result['enhanced_context']:
-                        document_content = qa_result['enhanced_context']
-                        metadata = qa_result['metadata']
-                        difficulty_info = qa_result.get('difficulty_analysis', {})
-                        
-                        chat_logger.info(
-                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks",
-                            hyde_chunks=metadata.get('hyde_chunks', 0),
-                            advanced_chunks=metadata.get('advanced_rag_chunks', 0),
-                            avg_relevance=f"{metadata.get('avg_relevance', 0):.2f}",
-                            confidence=f"{metadata.get('synthesis_confidence', 0):.2f}"
+                    qa_result = (
+                        await qa_generation_service.generate_qa_with_advanced_rag(
+                            topic=topic,
+                            token=token,
+                            filename=pdf_context["filename"],
+                            num_questions=count,
+                            difficulty="mixed",  # Generate mixed difficulty levels
+                            question_types=[
+                                "factual",
+                                "conceptual",
+                                "analytical",
+                                "applied",
+                            ],
                         )
-                        
+                    )
+
+                    if (
+                        qa_result["status"] in ["success", "fallback"]
+                        and qa_result["enhanced_context"]
+                    ):
+                        document_content = qa_result["enhanced_context"]
+                        metadata = qa_result["metadata"]
+                        difficulty_info = qa_result.get("difficulty_analysis", {})
+
+                        chat_logger.debug(
+                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks"
+                        )
+
                         topic_instruction = f"""
         SPECIFIC TOPIC FOCUS: "{topic.strip()}"
         Focus your questions specifically on this topic using the ULTRA-HIGH-QUALITY content below.
         
         ADVANCED CONTENT ANALYSIS:
         ✓ Retrieval Method: HyDE (Hypothetical Document Embeddings) + Multi-Query RAG
-        ✓ Total Chunks: {metadata.get('total_chunks', 0)} (HyDE: {metadata.get('hyde_chunks', 0)}, Advanced RAG: {metadata.get('advanced_rag_chunks', 0)})
-        ✓ Average Relevance Score: {metadata.get('avg_relevance', 0):.2f}
-        ✓ Average Information Density: {metadata.get('avg_density', 0):.1f}
-        ✓ Synthesis Confidence: {metadata.get('synthesis_confidence', 0):.1%}
-        ✓ Content Difficulty: {difficulty_info.get('difficulty', 'medium')}
-        ✓ Recommended Bloom's Levels: {', '.join(difficulty_info.get('levels', ['Understanding', 'Applying']))}
+        ✓ Total Chunks: {metadata.get("total_chunks", 0)} (HyDE: {metadata.get("hyde_chunks", 0)}, Advanced RAG: {metadata.get("advanced_rag_chunks", 0)})
+        ✓ Average Relevance Score: {metadata.get("avg_relevance", 0):.2f}
+        ✓ Average Information Density: {metadata.get("avg_density", 0):.1f}
+        ✓ Synthesis Confidence: {metadata.get("synthesis_confidence", 0):.1%}
+        ✓ Content Difficulty: {difficulty_info.get("difficulty", "medium")}
+        ✓ Recommended Bloom's Levels: {", ".join(difficulty_info.get("levels", ["Understanding", "Applying"]))}
         
         QUESTION GENERATION STRATEGY:
         - Each chunk is tagged with its relevance score and information density
@@ -462,19 +482,21 @@ class ChatService:
         """
                     else:
                         raise Exception("QA Generation Service returned no results")
-                        
+
                 except Exception as e:
-                    chat_logger.warning(f"Advanced RAG failed, falling back to basic: {e}")
+                    chat_logger.warning(
+                        f"Advanced RAG failed, falling back to basic: {e}"
+                    )
                     # Fallback to basic RAG
                     rag_result = await rag_service.retrieve_context(
                         query=f"Generate questions about: {topic}",
                         token=token,
-                        filename=pdf_context['filename'],
-                        top_k=12
+                        filename=pdf_context["filename"],
+                        top_k=12,
                     )
-                    
-                    if rag_result['status'] == 'success' and rag_result['context']:
-                        document_content = rag_result['context']
+
+                    if rag_result["status"] == "success" and rag_result["context"]:
+                        document_content = rag_result["context"]
                         topic_instruction = f"""
         SPECIFIC TOPIC FOCUS: "{topic.strip()}"
         Focus your questions specifically on this topic using the relevant content provided below.
@@ -490,13 +512,15 @@ class ChatService:
                 rag_result = await rag_service.retrieve_context(
                     query=f"Generate questions about: {topic}",
                     token=token,
-                    filename=pdf_context['filename'],
-                    top_k=8
+                    filename=pdf_context["filename"],
+                    top_k=8,
                 )
-                
-                if rag_result['status'] == 'success' and rag_result['context']:
-                    document_content = rag_result['context']
-                    chat_logger.info(f"Using basic RAG with {rag_result['num_chunks']} chunks")
+
+                if rag_result["status"] == "success" and rag_result["context"]:
+                    document_content = rag_result["context"]
+                    chat_logger.debug(
+                        f"Using basic RAG with {rag_result['num_chunks']} chunks"
+                    )
                     topic_instruction = f"""
         SPECIFIC TOPIC FOCUS: "{topic.strip()}"
         Focus your questions specifically on this topic using the relevant content provided below.
@@ -509,40 +533,48 @@ class ChatService:
         """
         else:
             # For general questions, use QA Generation Service with comprehensive mode
-            chat_logger.info("Using QA GENERATION SERVICE for comprehensive question generation")
-            
+            chat_logger.debug(
+                "Using QA GENERATION SERVICE for comprehensive question generation"
+            )
+
             if use_qa_generation_service:
                 try:
                     qa_result = await qa_generation_service.generate_qa_with_advanced_rag(
                         topic="comprehensive document coverage for educational assessment",
                         token=token,
-                        filename=pdf_context['filename'],
+                        filename=pdf_context["filename"],
                         num_questions=count,
                         difficulty="mixed",
-                        question_types=["factual", "conceptual", "analytical", "applied"]
+                        question_types=[
+                            "factual",
+                            "conceptual",
+                            "analytical",
+                            "applied",
+                        ],
                     )
-                    
-                    if qa_result['status'] in ['success', 'fallback'] and qa_result['enhanced_context']:
-                        document_content = qa_result['enhanced_context']
-                        metadata = qa_result['metadata']
-                        difficulty_info = qa_result.get('difficulty_analysis', {})
-                        
-                        chat_logger.info(
-                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks",
-                            hyde_chunks=metadata.get('hyde_chunks', 0),
-                            confidence=f"{metadata.get('synthesis_confidence', 0):.2f}"
+
+                    if (
+                        qa_result["status"] in ["success", "fallback"]
+                        and qa_result["enhanced_context"]
+                    ):
+                        document_content = qa_result["enhanced_context"]
+                        metadata = qa_result["metadata"]
+                        difficulty_info = qa_result.get("difficulty_analysis", {})
+
+                        chat_logger.debug(
+                            f"Using Q&A Generation Service: {metadata.get('total_chunks', 0)} chunks"
                         )
-                        
+
                         topic_instruction = f"""
         COMPREHENSIVE COVERAGE: Generate questions covering the full scope of the document.
         
         ADVANCED CONTENT ANALYSIS:
         ✓ Retrieval Method: HyDE + Multi-Query RAG (Comprehensive Mode)
-        ✓ Total Chunks: {metadata.get('total_chunks', 0)}
-        ✓ Average Relevance: {metadata.get('avg_relevance', 0):.2f}
-        ✓ Average Density: {metadata.get('avg_density', 0):.1f}
-        ✓ Synthesis Confidence: {metadata.get('synthesis_confidence', 0):.1%}
-        ✓ Content Difficulty: {difficulty_info.get('difficulty', 'medium')}
+        ✓ Total Chunks: {metadata.get("total_chunks", 0)}
+        ✓ Average Relevance: {metadata.get("avg_relevance", 0):.2f}
+        ✓ Average Density: {metadata.get("avg_density", 0):.1f}
+        ✓ Synthesis Confidence: {metadata.get("synthesis_confidence", 0):.1%}
+        ✓ Content Difficulty: {difficulty_info.get("difficulty", "medium")}
         
         Distribute questions across multiple topics and all Bloom's taxonomy levels.
         Ensure broad coverage of the document's major themes and concepts.
@@ -550,7 +582,9 @@ class ChatService:
                     else:
                         raise Exception("QA Generation Service returned no results")
                 except Exception as e:
-                    chat_logger.warning(f"QA Generation Service failed for comprehensive mode: {e}")
+                    chat_logger.warning(
+                        f"QA Generation Service failed for comprehensive mode: {e}"
+                    )
                     document_content = full_content[:50000]
                     topic_instruction = ""
             else:
@@ -615,7 +649,7 @@ class ChatService:
         You are an expert educational AI assistant with advanced content analysis capabilities. 
         Analyze the following HIGH-QUALITY, CURATED document content and create comprehensive questions for learning.
 
-        Document: {pdf_context['filename']}
+        Document: {pdf_context["filename"]}
         {topic_instruction}
 
         DOCUMENT CONTENT (CURATED WITH ADVANCED RAG):
@@ -629,11 +663,11 @@ class ChatService:
         
         {document_content}
 
-        TASK: Create exactly {count} educational questions based on the HIGH-QUALITY document content above{' focusing on the specified topic' if topic and topic.strip() else ''}.
+        TASK: Create exactly {count} educational questions based on the HIGH-QUALITY document content above{" focusing on the specified topic" if topic and topic.strip() else ""}.
 
         REQUIREMENTS:
         1. Analyze the CURATED document content above - these are the most relevant and information-dense sections
-        2. {'Focus specifically on the topic: "' + topic.strip() + '" while using the curated content as your primary source' if topic and topic.strip() else 'Create questions that cover the full scope of the curated content'}
+        2. {'Focus specifically on the topic: "' + topic.strip() + '" while using the curated content as your primary source' if topic and topic.strip() else "Create questions that cover the full scope of the curated content"}
         3. BLOOM'S TAXONOMY DISTRIBUTION - Generate questions across ALL levels:
            - Remembering (20%): Recall facts, terms, basic concepts
            - Understanding (20%): Explain ideas, summarize information
@@ -665,21 +699,22 @@ class ChatService:
         - Questions are specific to the actual document content provided above
         - Each question can be answered using information from the document
         - Questions progress from basic to advanced understanding
-        - {'Focus specifically on the topic "' + topic.strip() + '" while ensuring all questions can be answered from the document content' if topic and topic.strip() else 'Cover all major topics and themes in the document'}
+        - {'Focus specifically on the topic "' + topic.strip() + '" while ensuring all questions can be answered from the document content' if topic and topic.strip() else "Cover all major topics and themes in the document"}
         - Use actual terms, concepts, and examples from the text provided
-        - Questions are diverse and cover different aspects of the {'specified topic' if topic and topic.strip() else 'content'}
+        - Questions are diverse and cover different aspects of the {"specified topic" if topic and topic.strip() else "content"}
 
-        Generate exactly {count} questions now based on the full document content provided above{' focusing on the specified topic' if topic and topic.strip() else ''}.
+        Generate exactly {count} questions now based on the full document content provided above{" focusing on the specified topic" if topic and topic.strip() else ""}.
         """
 
         try:
-            # Generate response using async Gemini with rotated API key
-            rotated_model = await get_rotated_model_async()
-            ai_response = await generate_content_async(rotated_model, context)
-            chat_logger.info("Gemini AI response received", response_length=len(ai_response))
+            # Generate response using Together.ai
+            ai_response = await generate_content_async(context)
+            chat_logger.debug(
+                f"Together.ai response received, length: {len(ai_response)}"
+            )
 
             if not ai_response:
-                chat_logger.error("No response from Gemini AI")
+                chat_logger.error("No response from Together.ai")
                 raise HTTPException(status_code=500, detail="No response from AI")
 
             ai_response = ai_response.strip()
@@ -688,62 +723,82 @@ class ChatService:
             cleaned_response = ai_response.strip()
 
             # Remove markdown code blocks if present
-            if cleaned_response.startswith('```json'):
+            if cleaned_response.startswith("```json"):
                 cleaned_response = cleaned_response[7:]
-            if cleaned_response.startswith('```'):
+            if cleaned_response.startswith("```"):
                 cleaned_response = cleaned_response[3:]
-            if cleaned_response.endswith('```'):
+            if cleaned_response.endswith("```"):
                 cleaned_response = cleaned_response[:-3]
 
             cleaned_response = cleaned_response.strip()
 
             # Validate that response contains JSON-like structure
-            if '{' not in cleaned_response or '}' not in cleaned_response:
-                chat_logger.warning("Response doesn't contain JSON structure", response_preview=ai_response[:100])
-                
+            if "{" not in cleaned_response or "}" not in cleaned_response:
+                chat_logger.warning(
+                    "Response doesn't contain JSON structure",
+                    response_preview=ai_response[:100],
+                )
+
                 # Fallback: create a simple question structure
-                fallback_questions = [
-                    {
-                        "question": f"What is the main topic discussed in this document?",
-                        "options": ["Main topic", "Secondary topic", "Supporting detail", "Conclusion"],
-                        "correct_answer": "Main topic",
-                        "explanation": "This is a fallback question based on the document content."
-                    }
-                ]
-                return fallback_questions
+                fallback_questions = {
+                    "questions": [
+                        {
+                            "question": f"What is the main topic discussed in this document?",
+                            "options": [
+                                "Main topic",
+                                "Secondary topic",
+                                "Supporting detail",
+                                "Conclusion",
+                            ],
+                            "correct_answer": "Main topic",
+                            "explanation": "This is a fallback question based on the document content.",
+                        }
+                    ]
+                }
+                return ChatResponse(
+                    response=json.dumps(fallback_questions),
+                    timestamp=datetime.now().isoformat(),
+                )
 
             # Try to extract JSON from the response
-            import json
             import re
 
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
+            json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", ai_response)
             if json_match:
                 try:
                     evaluation_data = json.loads(json_match.group())
 
                     return ChatResponse(
                         response=json.dumps(evaluation_data),
-                        timestamp=datetime.now().isoformat()
+                        timestamp=datetime.now().isoformat(),
                     )
                 except json.JSONDecodeError:
                     pass
 
-            # Fallback if JSON parsing fails
+                # Fallback if JSON parsing fails
 
                 # Ensure it has the expected structure
-                if 'questions' not in parsed_json:
+                if "questions" not in evaluation_data:
                     raise ValueError("JSON missing 'questions' field")
 
         except Exception as e:
             chat_logger.error("Error generating questions", error=str(e))
-            raise HTTPException(status_code=500, detail=f"Failed to generate questions: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to generate questions: {str(e)}"
+            )
 
     @staticmethod
-    async def evaluate_answer(request: AnswerEvaluationRequest, token: str) -> AnswerEvaluationResponse:
+    async def evaluate_answer(
+        request: AnswerEvaluationRequest, token: str
+    ) -> AnswerEvaluationResponse:
         """Evaluate a single user answer using AI"""
+
         def get_pdf_context():
             if token not in pdf_contexts:
-                raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No PDF selected. Please select a PDF first.",
+                )
             return pdf_contexts[token]
 
         pdf_context = safe_storage_access(get_pdf_context, token)
@@ -752,17 +807,17 @@ class ChatService:
         rag_result = await rag_service.retrieve_context(
             query=request.question,
             token=token,
-            filename=pdf_context['filename'],
-            top_k=3
+            filename=pdf_context["filename"],
+            top_k=3,
         )
-        
-        if rag_result['status'] == 'success' and rag_result['context']:
-            relevant_content = rag_result['context']
-            chat_logger.info("Using RAG context for answer evaluation")
+
+        if rag_result["status"] == "success" and rag_result["context"]:
+            relevant_content = rag_result["context"]
+            chat_logger.debug("Using RAG context for answer evaluation")
         else:
             # Fallback to limited content
-            relevant_content = pdf_context['content'][:10000]
-            chat_logger.warning("Using fallback content for evaluation")
+            relevant_content = pdf_context["content"][:10000]
+            chat_logger.debug("Using fallback content for evaluation")
 
         # Get evaluation level settings
         evaluation_level = request.evaluation_level or "medium"
@@ -813,13 +868,17 @@ class ChatService:
         IMPORTANT: If the student's answer is empty, blank, or just says "No answer provided", give a score of 0."""
 
         # Check if answer is empty and give 0 score
-        if not request.user_answer or request.user_answer.strip() == "" or request.user_answer.strip().lower() == "no answer provided":
+        if (
+            not request.user_answer
+            or request.user_answer.strip() == ""
+            or request.user_answer.strip().lower() == "no answer provided"
+        ):
             return AnswerEvaluationResponse(
                 question_id=request.question_id,
                 score=0,
                 max_score=10,
                 feedback="No answer was provided for this question.",
-                suggestions="Please provide an answer based on the document content to receive a score."
+                suggestions="Please provide an answer based on the document content to receive a score.",
             )
 
         # This logic will be handled in the quiz evaluation method instead
@@ -829,7 +888,7 @@ class ChatService:
         evaluation_context = f"""
         You are an expert educational evaluator. Your task is to evaluate a student's answer to a question based on the provided document content.
 
-        Document: {pdf_context['filename']}
+        Document: {pdf_context["filename"]}
         Relevant Document Content: {relevant_content}
 
         Question: {request.question}
@@ -855,24 +914,28 @@ class ChatService:
         """
 
         try:
-            rotated_model = await get_rotated_model_async()
-            ai_response = await generate_content_async(rotated_model, evaluation_context)
+            ai_response = await generate_content_async(evaluation_context)
 
             # Try to extract JSON from the response
-            import json
             import re
 
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
+            json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", ai_response)
             if json_match:
                 try:
                     evaluation_data = json.loads(json_match.group())
 
                     return AnswerEvaluationResponse(
                         question_id=request.question_id,
-                        score=min(max(evaluation_data.get('score', 0), 0), 10),  # Ensure score is 0-10
-                        feedback=evaluation_data.get('feedback', 'No feedback provided'),
-                        suggestions=evaluation_data.get('suggestions', 'No suggestions provided'),
-                        correct_answer_hint=evaluation_data.get('correct_answer_hint')
+                        score=min(
+                            max(evaluation_data.get("score", 0), 0), 10
+                        ),  # Ensure score is 0-10
+                        feedback=evaluation_data.get(
+                            "feedback", "No feedback provided"
+                        ),
+                        suggestions=evaluation_data.get(
+                            "suggestions", "No suggestions provided"
+                        ),
+                        correct_answer_hint=evaluation_data.get("correct_answer_hint"),
                     )
                 except json.JSONDecodeError:
                     pass
@@ -883,19 +946,27 @@ class ChatService:
                 score=5,  # Default middle score
                 feedback=ai_response,
                 suggestions="Please review the document content for more accurate information.",
-                correct_answer_hint="Refer to the relevant sections in the document."
+                correct_answer_hint="Refer to the relevant sections in the document.",
             )
 
         except Exception as e:
             chat_logger.error("Error evaluating answer", error=str(e))
-            raise HTTPException(status_code=500, detail=f"Failed to evaluate answer: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to evaluate answer: {str(e)}"
+            )
 
     @staticmethod
-    async def evaluate_quiz(request: QuizSubmissionRequest, token: str) -> QuizSubmissionResponse:
+    async def evaluate_quiz(
+        request: QuizSubmissionRequest, token: str
+    ) -> QuizSubmissionResponse:
         """Evaluate a complete quiz submission"""
+
         def get_pdf_context():
             if token not in pdf_contexts:
-                raise HTTPException(status_code=400, detail="No PDF selected. Please select a PDF first.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No PDF selected. Please select a PDF first.",
+                )
             return pdf_contexts[token]
 
         pdf_context = safe_storage_access(get_pdf_context, token)
@@ -906,7 +977,7 @@ class ChatService:
 
         for answer in request.answers:
             # Handle MCQ questions with binary scoring
-            if answer.question_type == 'mcq' and answer.correct_answer:
+            if answer.question_type == "mcq" and answer.correct_answer:
                 user_answer_clean = answer.user_answer.strip().upper()
                 correct_answer_clean = answer.correct_answer.strip().upper()
 
@@ -917,20 +988,20 @@ class ChatService:
                     explanation_rag = await rag_service.retrieve_context(
                         query=answer.question,
                         token=token,
-                        filename=pdf_context['filename'],
-                        top_k=2
+                        filename=pdf_context["filename"],
+                        top_k=2,
                     )
-                    
-                    if explanation_rag['status'] == 'success':
-                        explanation_content = explanation_rag['context']
+
+                    if explanation_rag["status"] == "success":
+                        explanation_content = explanation_rag["context"]
                     else:
-                        explanation_content = pdf_context['content'][:10000]
-                    
+                        explanation_content = pdf_context["content"][:10000]
+
                     # Get the correct answer explanation using AI
                     explanation_context = f"""
                     You are an educational AI providing feedback on a multiple choice question.
 
-                    Document: {pdf_context['filename']}
+                    Document: {pdf_context["filename"]}
                     Relevant Document Content: {explanation_content}
 
                     Question: {answer.question}
@@ -942,12 +1013,19 @@ class ChatService:
                     Respond with just the explanation, no additional formatting.
                     """
 
-                    rotated_model = await get_rotated_model_async()
-                    explanation_response = await generate_content_async(rotated_model, explanation_context)
-                    correct_answer_explanation = explanation_response.strip() if explanation_response else f"Option {correct_answer_clean} is the correct answer according to the document."
+                    explanation_response = await generate_content_async(
+                        explanation_context
+                    )
+                    correct_answer_explanation = (
+                        explanation_response.strip()
+                        if explanation_response
+                        else f"Option {correct_answer_clean} is the correct answer according to the document."
+                    )
 
                 except Exception as e:
-                    chat_logger.warning("Error getting answer explanation", error=str(e))
+                    chat_logger.warning(
+                        "Error getting answer explanation", error=str(e)
+                    )
                     correct_answer_explanation = f"Option {correct_answer_clean} is the correct answer according to the document."
 
                 # Get the actual option texts for better feedback
@@ -967,7 +1045,11 @@ class ChatService:
                     score = 10  # Full marks for correct answer
                     feedback = f"✅ Correct! You selected '{user_option_text or f'Option {user_answer_clean}'}'. {correct_answer_explanation}"
                     suggestions = "Great job! Continue studying to maintain this level of understanding."
-                elif not answer.user_answer or answer.user_answer.strip() == "" or answer.user_answer.strip().lower() == "no answer provided":
+                elif (
+                    not answer.user_answer
+                    or answer.user_answer.strip() == ""
+                    or answer.user_answer.strip().lower() == "no answer provided"
+                ):
                     score = 0  # Zero marks for no answer
                     feedback = f"❌ No answer was provided for this question. The correct answer is '{correct_option_text or f'Option {correct_answer_clean}'}'. {correct_answer_explanation}"
                     suggestions = "Please provide an answer based on the document content to receive a score."
@@ -981,7 +1063,7 @@ class ChatService:
                     score=score,
                     max_score=10,
                     feedback=feedback,
-                    suggestions=suggestions
+                    suggestions=suggestions,
                 )
             else:
                 # Handle open-ended questions with AI evaluation
@@ -989,7 +1071,7 @@ class ChatService:
                     question=answer.question,
                     user_answer=answer.user_answer,
                     question_id=answer.question_id,
-                    evaluation_level=request.evaluation_level
+                    evaluation_level=request.evaluation_level,
                 )
                 result = await ChatService.evaluate_answer(eval_request, token)
 
@@ -998,7 +1080,9 @@ class ChatService:
 
         # Calculate overall metrics
         max_possible_score = len(request.answers) * 10
-        percentage = (total_score / max_possible_score) * 100 if max_possible_score > 0 else 0
+        percentage = (
+            (total_score / max_possible_score) * 100 if max_possible_score > 0 else 0
+        )
 
         # Determine grade
         if percentage >= 90:
@@ -1016,8 +1100,8 @@ class ChatService:
         overall_context = f"""
         You are an educational AI providing comprehensive feedback on a student's quiz performance.
 
-        Document: {pdf_context['filename']}
-        Topic: {request.topic or 'General'}
+        Document: {pdf_context["filename"]}
+        Topic: {request.topic or "General"}
 
         Quiz Results:
         - Total Score: {total_score}/{max_possible_score} ({percentage:.1f}%)
@@ -1027,7 +1111,9 @@ class ChatService:
         Individual Question Performance:
         """
 
-        for i, (answer, result) in enumerate(zip(request.answers, individual_results), 1):
+        for i, (answer, result) in enumerate(
+            zip(request.answers, individual_results), 1
+        ):
             overall_context += f"""
         Question {i}: {answer.question}
         Student Answer: {answer.user_answer}
@@ -1054,14 +1140,12 @@ class ChatService:
         """
 
         try:
-            rotated_model = await get_rotated_model_async()
-            ai_response = await generate_content_async(rotated_model, overall_context)
+            ai_response = await generate_content_async(overall_context)
 
             # Parse AI response
-            import json
             import re
 
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
+            json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", ai_response)
             if json_match:
                 try:
                     feedback_data = json.loads(json_match.group())
@@ -1072,10 +1156,21 @@ class ChatService:
                         percentage=round(percentage, 1),
                         grade=grade,
                         individual_results=individual_results,
-                        overall_feedback=feedback_data.get('overall_feedback', f'You scored {total_score}/{max_possible_score} ({percentage:.1f}%)'),
-                        study_suggestions=feedback_data.get('study_suggestions', ['Review the document content', 'Practice more questions']),
-                        strengths=feedback_data.get('strengths', ['Attempted all questions']),
-                        areas_for_improvement=feedback_data.get('areas_for_improvement', ['Focus on accuracy', 'Provide more detailed answers'])
+                        overall_feedback=feedback_data.get(
+                            "overall_feedback",
+                            f"You scored {total_score}/{max_possible_score} ({percentage:.1f}%)",
+                        ),
+                        study_suggestions=feedback_data.get(
+                            "study_suggestions",
+                            ["Review the document content", "Practice more questions"],
+                        ),
+                        strengths=feedback_data.get(
+                            "strengths", ["Attempted all questions"]
+                        ),
+                        areas_for_improvement=feedback_data.get(
+                            "areas_for_improvement",
+                            ["Focus on accuracy", "Provide more detailed answers"],
+                        ),
                     )
                 except json.JSONDecodeError:
                     pass
@@ -1087,10 +1182,18 @@ class ChatService:
                 percentage=round(percentage, 1),
                 grade=grade,
                 individual_results=individual_results,
-                overall_feedback=f'You scored {total_score}/{max_possible_score} ({percentage:.1f}%). {"Great job!" if percentage >= 80 else "Keep practicing to improve your understanding."}',
-                study_suggestions=['Review the document content thoroughly', 'Focus on key concepts and definitions', 'Practice explaining concepts in your own words'],
-                strengths=['Completed all questions', 'Showed effort in answering'],
-                areas_for_improvement=['Accuracy of responses', 'Depth of understanding', 'Use of specific examples from the text']
+                overall_feedback=f"You scored {total_score}/{max_possible_score} ({percentage:.1f}%). {'Great job!' if percentage >= 80 else 'Keep practicing to improve your understanding.'}",
+                study_suggestions=[
+                    "Review the document content thoroughly",
+                    "Focus on key concepts and definitions",
+                    "Practice explaining concepts in your own words",
+                ],
+                strengths=["Completed all questions", "Showed effort in answering"],
+                areas_for_improvement=[
+                    "Accuracy of responses",
+                    "Depth of understanding",
+                    "Use of specific examples from the text",
+                ],
             )
 
         except Exception as e:
@@ -1102,8 +1205,11 @@ class ChatService:
                 percentage=round(percentage, 1),
                 grade=grade,
                 individual_results=individual_results,
-                overall_feedback=f'Quiz completed. Score: {total_score}/{max_possible_score} ({percentage:.1f}%)',
-                study_suggestions=['Review the document content', 'Practice more questions'],
-                strengths=['Completed the quiz'],
-                areas_for_improvement=['Continue studying the material']
+                overall_feedback=f"Quiz completed. Score: {total_score}/{max_possible_score} ({percentage:.1f}%)",
+                study_suggestions=[
+                    "Review the document content",
+                    "Practice more questions",
+                ],
+                strengths=["Completed the quiz"],
+                areas_for_improvement=["Continue studying the material"],
             )

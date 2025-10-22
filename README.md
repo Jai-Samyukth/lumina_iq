@@ -21,7 +21,7 @@ Lumina IQ is a comprehensive AI-powered learning platform that enables users to 
 ### Network Requirements
 - Port 8000 open for backend API
 - Port 3000 open for frontend (development)
-- Internet access for Google Gemini API calls
+- Internet access for Together.ai API calls
 
 ## 🏗️ Architecture Overview
 
@@ -33,7 +33,7 @@ Lumina IQ is a comprehensive AI-powered learning platform that enables users to 
         │                      │
         ▼                      ▼
 ┌─────────────────┐    ┌─────────────────┐
-│   User Browser  │    │   Gemini AI     │
+│   User Browser  │    │   Together.ai   │
 │                 │    │   API Service   │
 └─────────────────┘    └─────────────────┘
 ```
@@ -55,9 +55,6 @@ lumina-iq/
 │   ├── public/            # Static assets
 │   ├── package.json       # Node.js dependencies
 │   └── .env.example      # Environment template
-├── api_rotation/          # API key management
-│   ├── api_key_rotator.py # Key rotation logic
-│   └── README.md          # API key setup guide
 └── README.md             # This file
 ```
 
@@ -104,7 +101,7 @@ pip install pywin32
 cp .env.example .env
 
 # Edit .env file with your configuration
-# Required: Add your Gemini API keys
+# Required: Add your Together.ai API key
 # Required: Change security keys for production
 ```
 
@@ -112,7 +109,40 @@ cp .env.example .env
 
 ```env
 # Server Configuration
-Server Configuration in backend/config.py
+HOST=0.0.0.0
+PORT=8000
+CORS_ORIGINS=["http://localhost:3000","http://your-domain.com"]
+
+# AI Configuration - REQUIRED: Add your Together.ai API key
+TOGETHER_API_KEY=your_together_api_key_here
+TOGETHER_MODEL=openai/gpt-oss-20b
+TOGETHER_BASE_URL=https://api.together.xyz/v1
+
+# Gemini Configuration - OPTIONAL: For alternative AI models (legacy)
+GEMINI_MODEL=gemini-pro
+GEMINI_API_KEY_1=your_gemini_api_key_here
+GEMINI_API_KEY_2=your_second_gemini_api_key_here
+
+# Embedding Configuration
+EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
+EMBEDDING_DIMENSIONS=1024
+
+# Qdrant Cloud Configuration - REQUIRED for RAG
+QDRANT_URL=your_qdrant_cloud_url_here
+QDRANT_API_KEY=your_qdrant_api_key_here
+QDRANT_COLLECTION_NAME=learning_app_documents
+
+# Security - REQUIRED: Change these in production!
+JWT_SECRET=change_this_to_a_secure_random_string_in_production
+ENCRYPTION_KEY=change_this_to_another_secure_random_string
+
+# Logging Configuration
+LOG_LEVEL=WARNING
+LOG_FORMAT=json
+
+# Performance Settings
+MAX_WORKERS=4
+MAX_CONCURRENT_REQUESTS=1000
 ```
 
 ### Step 2: Frontend Setup
@@ -355,7 +385,7 @@ curl http://localhost:8000/
 
 - Increase worker count for higher concurrency
 - Monitor memory usage during PDF processing
-- Check network connectivity to Gemini API
+- Check network connectivity to Together.ai API
 - Use `uvloop` and `httptools` on Unix systems for better performance
 
 ## 📞 Support & Maintenance
@@ -365,12 +395,12 @@ curl http://localhost:8000/
 1. **Dependency Updates**: Regularly update Python and Node.js dependencies
 2. **Log Rotation**: Monitor and manage log file sizes in `backend/logs/`
 3. **Storage Management**: Clean up old cached files and uploaded PDFs
-4. **API Key Rotation**: Regularly rotate Gemini API keys using the API rotation system
+4. **API Key Management**: Monitor Together.ai API usage and manage keys as needed
 
 ### Emergency Procedures
 
 1. **Service Outage**: Restart backend and frontend services
-2. **API Limit Exceeded**: Add more API keys or wait for quota reset
+2. **API Limit Exceeded**: Add more Together.ai API keys or wait for quota reset
 3. **Storage Full**: Clear cache directory and old uploaded files
 
 ## 📋 Deployment Checklist
@@ -380,7 +410,7 @@ curl http://localhost:8000/
 - [ ] Backend dependencies installed (`pip install -r requirements.txt`)
 - [ ] Frontend dependencies installed (`npm install`)
 - [ ] Environment variables configured for both backend and frontend
-- [ ] Gemini API keys set up and tested
+- [ ] Together.ai API key set up and tested
 - [ ] Required directories created (`uploaded_books`, `cache`, `logs`)
 - [ ] CORS origins properly configured
 - [ ] Backend server starts successfully on port 8000

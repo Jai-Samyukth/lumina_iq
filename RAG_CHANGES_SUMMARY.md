@@ -7,7 +7,6 @@ Successfully implemented Retrieval Augmented Generation (RAG) using Qdrant Cloud
 
 ### 1. `backend/services/embedding_service.py`
 - Generates embeddings using Gemini embedding-001 model
-- Integrates with API key rotation from api_rotation
 - Supports batch embedding generation
 - Handles both document and query embeddings
 
@@ -266,13 +265,6 @@ QDRANT_COLLECTION_NAME=  # Collection name (default: learning_app_documents)
 - **Technical Docs**: `RAG_IMPLEMENTATION.md`
 - **This Summary**: `RAG_CHANGES_SUMMARY.md`
 
-## API Key Rotation Integration
-
-RAG fully integrates with existing API rotation:
-- Uses `api_rotation/api_key_rotator.py`
-- Same 14 API keys for embeddings
-- Automatic load balancing
-- High availability maintained
 
 ## Backward Compatibility
 
