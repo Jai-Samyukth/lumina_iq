@@ -1,0 +1,1 @@
+2025-10-26 19:42:28 | INFO | pdf_service | info:69 | {"message": "Document tracking database initialized", "data": {"db_path": "/home/lucifer/dev/projects/mixed_stacked/lumina_iq/backend/document_tracking.db"}, "timestamp": "2025-10-26T14:12:28.453255", "logger": "pdf_service"}

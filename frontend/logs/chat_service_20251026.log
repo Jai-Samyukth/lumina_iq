@@ -1,0 +1,2 @@
+2025-10-26 19:42:27 | INFO | chat_service | info:69 | Qdrant client initialized successfully
+2025-10-26 19:42:28 | INFO | chat_service | info:69 | Collection already exists: learning_app_documents

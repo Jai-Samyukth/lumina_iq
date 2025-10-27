@@ -4,16 +4,15 @@ from config.settings import settings
 from utils.storage import user_sessions
 from utils.security import create_session_id
 from models.auth import LoginRequest, LoginResponse
-import logging
+from utils.logging_config import get_logger
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Use enhanced logger
+logger = get_logger("auth_service")
 
 class AuthService:
     @staticmethod
     def login(request: LoginRequest) -> LoginResponse:
-        logger.info(f"Login attempt for username: {request.username}")
+        logger.debug(f"Login attempt for user: {request.username}")
 
         if (request.username == settings.LOGIN_USERNAME and
             request.password == settings.LOGIN_PASSWORD):
@@ -34,7 +33,7 @@ class AuthService:
                 message="Login successful"
             )
         else:
-            logger.warning("Login failed - invalid credentials")
+            logger.warning("❌ Login failed - invalid credentials")
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
     @staticmethod

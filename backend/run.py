@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config.settings import settings
 from utils.ip_detector import setup_frontend_env
 
+print(settings.TOGETHER_API_KEY)
+
+
 def main():
     """Start the FastAPI server."""
     print("🚀 Starting Learning App Backend...")
@@ -25,22 +28,28 @@ def main():
     print(f"\n📍 Server will run on: http://{settings.HOST}:{settings.PORT}")
     print(f"🌐 Accessible at: http://{detected_ip}:{settings.PORT}")
     print(f"📚 Books directory: {settings.BOOKS_DIR}")
-    print(f"🔑 Using Gemini model: {settings.GEMINI_MODEL}")
+    print(f"🔑 Using Together.ai model: {settings.TOGETHER_MODEL}")
     print("=" * 50)
-    
+
     try:
         uvicorn.run(
             "main:app",
             host=settings.HOST,
             port=settings.PORT,
             reload=True,
-            log_level="info"
+            log_level="debug",
+            workers=1,  # Single worker for development with reload
+            # Basic optimizations for development
+            backlog=2048,
+            timeout_keep_alive=5,
+            limit_concurrency=500,
         )
     except KeyboardInterrupt:
         print("\n👋 Server stopped by user")
     except Exception as e:
         print(f"❌ Error starting server: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

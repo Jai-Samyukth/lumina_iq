@@ -3,3 +3,7 @@
 __pycache__
 .vscode
 node_modules
+books
+cache
+logs
+../logs

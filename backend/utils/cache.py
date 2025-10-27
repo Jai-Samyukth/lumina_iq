@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from config.settings import settings
+from utils.logger import cache_logger
 
 class CacheService:
     """Service for caching extracted PDF text to improve performance"""
@@ -30,7 +31,7 @@ class CacheService:
             
             return cache_key
         except Exception as e:
-            print(f"Error generating cache key for {file_path}: {e}")
+            cache_logger.error("Error generating cache key", file_path=file_path, error=str(e))
             # Fallback to just file path hash if stat fails
             return hashlib.md5(file_path.encode()).hexdigest()
     
@@ -53,7 +54,7 @@ class CacheService:
             cache_file_path = self._get_cache_file_path(cache_key)
             
             if not cache_file_path.exists():
-                print(f"No cache found for {file_path}")
+                cache_logger.debug("No cache found", file_path=file_path)
                 return None
             
             # Read cached data
@@ -62,14 +63,14 @@ class CacheService:
             
             # Verify cache data structure
             if not all(key in cache_data for key in ['text', 'cached_at', 'file_path']):
-                print(f"Invalid cache data structure for {file_path}")
+                cache_logger.warning("Invalid cache data structure", file_path=file_path)
                 return None
             
-            print(f"Cache hit for {file_path} (cached at: {cache_data['cached_at']})")
+            cache_logger.info("Cache hit", file_path=file_path, cached_at=cache_data['cached_at'])
             return cache_data['text']
             
         except Exception as e:
-            print(f"Error reading cache for {file_path}: {e}")
+            cache_logger.error("Error reading cache", file_path=file_path, error=str(e))
             return None
     
     async def save_to_cache(self, file_path: str, extracted_text: str) -> bool:
@@ -100,11 +101,11 @@ class CacheService:
             async with aiofiles.open(cache_file_path, 'w', encoding='utf-8') as f:
                 await f.write(json.dumps(cache_data, ensure_ascii=False, indent=2))
             
-            print(f"Successfully cached text for {file_path} (key: {cache_key})")
+            cache_logger.info("Successfully cached text", file_path=file_path, cache_key=cache_key)
             return True
             
         except Exception as e:
-            print(f"Error saving to cache for {file_path}: {e}")
+            cache_logger.error("Error saving to cache", file_path=file_path, error=str(e))
             return False
     
     def clear_cache(self) -> int:
@@ -120,11 +121,11 @@ class CacheService:
                 cache_file.unlink()
                 deleted_count += 1
             
-            print(f"Cleared {deleted_count} cache files")
+            cache_logger.info("Cache cleared", deleted_count=deleted_count)
             return deleted_count
             
         except Exception as e:
-            print(f"Error clearing cache: {e}")
+            cache_logger.error("Error clearing cache", error=str(e))
             return 0
     
     def get_cache_info(self) -> dict:
@@ -147,14 +148,8 @@ class CacheService:
             }
             
         except Exception as e:
-            print(f"Error getting cache info: {e}")
-            return {
-                'cache_directory': str(self.cache_dir),
-                'total_cached_files': 0,
-                'total_cache_size_bytes': 0,
-                'total_cache_size_mb': 0,
-                'error': str(e)
-            }
+            cache_logger.error("Error getting cache info", error=str(e))
+            return {}
 
 # Global cache service instance
 cache_service = CacheService()
