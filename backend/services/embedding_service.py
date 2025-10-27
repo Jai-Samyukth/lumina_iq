@@ -33,7 +33,11 @@ class EmbeddingService:
         """Initialize and return Together.ai client"""
         api_key = EmbeddingService.get_api_key()
 
+        chat_logger.debug(
+            f"Initializing client with API key: {'[SET]' if api_key else '[NOT SET]'}"
+        )
         if not api_key:
+            chat_logger.error("TOGETHER_API_KEY is not set in settings")
             raise ValueError("TOGETHER_API_KEY environment variable is required")
 
         client = together.Together(api_key=api_key)

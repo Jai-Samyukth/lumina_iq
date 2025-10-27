@@ -29,11 +29,13 @@ class RAGService:
             Dictionary with indexing results
         """
         try:
+            print(f"[DEBUG] Starting RAG indexing for {filename} with token {token[:12]} and file_path {file_path}")
             chat_logger.info(
                 "Starting document indexing",
                 filename=filename,
                 content_length=len(content),
                 user_id=token[:12],
+                file_path=file_path,
             )
 
             # Calculate file hash for duplicate detection
@@ -42,21 +44,40 @@ class RAGService:
 
             if file_path:
                 file_hash = file_hash_service.calculate_file_hash(file_path)
+                chat_logger.info(
+                    "Calculated file hash",
+                    filename=filename,
+                    file_path=file_path,
+                    hash=file_hash[:16] if file_hash else "FAILED",
+                )
             else:
                 # Calculate hash from content if no file path
                 file_hash = file_hash_service.calculate_content_hash(
                     content.encode("utf-8")
                 )
+                chat_logger.info(
+                    "Calculated content hash",
+                    filename=filename,
+                    hash=file_hash[:16] if file_hash else "FAILED",
+                )
 
             if not file_hash:
                 chat_logger.warning(
-                    "Could not calculate file hash, proceeding without duplicate check"
+                    "Could not calculate file hash, proceeding without duplicate check",
+                    filename=filename,
                 )
 
             # Check if this exact file was already uploaded by this user
             if file_hash:
                 existing_doc = document_tracking_service.check_document_exists(
                     token, file_hash
+                )
+                chat_logger.info(
+                    "Document tracking check result",
+                    filename=filename,
+                    hash=file_hash[:16],
+                    exists=existing_doc is not None,
+                    existing_filename=existing_doc["filename"] if existing_doc else None,
                 )
                 if existing_doc:
                     chat_logger.info(
@@ -76,6 +97,12 @@ class RAGService:
 
             # Check if already indexed in Qdrant (fallback check)
             is_indexed = await qdrant_service.check_document_indexed(filename, token)
+            chat_logger.info(
+                "Qdrant indexing check result",
+                filename=filename,
+                token=token[:12],
+                is_indexed=is_indexed,
+            )
             if is_indexed:
                 chat_logger.info(
                     "Document already indexed in Qdrant", filename=filename

@@ -3,8 +3,18 @@ import socket
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from backend/.env
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+print(env_path)
+# Debug log to validate API key loading
+api_key = os.getenv("TOGETHER_API_KEY", "")
+if api_key:
+    print(
+        f"TOGETHER_API_KEY loaded successfully: {api_key[:10]}..."
+    )  # Masked for security
+else:
+    print("WARNING: TOGETHER_API_KEY not loaded from .env file")
 
 
 def get_local_ip():
@@ -36,6 +46,16 @@ class Settings:
     # Embedding Configuration
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
     EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "1024"))
+
+    # LlamaIndex Configuration
+    LLAMAINDEX_CHUNK_SIZE = int(os.getenv("LLAMAINDEX_CHUNK_SIZE", "1000"))
+    LLAMAINDEX_CHUNK_OVERLAP = int(os.getenv("LLAMAINDEX_CHUNK_OVERLAP", "200"))
+    LLAMAINDEX_USE_FOR_LARGE_PDFS = (
+        os.getenv("LLAMAINDEX_USE_FOR_LARGE_PDFS", "true").lower() == "true"
+    )
+    LLAMAINDEX_LARGE_PDF_THRESHOLD_MB = int(
+        os.getenv("LLAMAINDEX_LARGE_PDF_THRESHOLD_MB", "10")
+    )
 
     # Qdrant Cloud Configuration
     QDRANT_URL = os.getenv(

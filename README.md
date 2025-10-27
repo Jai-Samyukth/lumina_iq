@@ -143,6 +143,15 @@ LOG_FORMAT=json
 # Performance Settings
 MAX_WORKERS=4
 MAX_CONCURRENT_REQUESTS=1000
+
+# LlamaIndex Configuration (for large PDF processing)
+LLAMAINDEX_CHUNK_SIZE=1000
+LLAMAINDEX_CHUNK_OVERLAP=200
+LLAMAINDEX_USE_FOR_LARGE_PDFS=true
+LLAMAINDEX_LARGE_PDF_THRESHOLD_MB=10
+
+# NLTK Configuration (automatically managed)
+# NLTK_DATA=/path/to/nltk_data  # Optional: custom NLTK data location
 ```
 
 ### Step 2: Frontend Setup
@@ -379,6 +388,76 @@ lsof -i :8000                # Linux/Mac
 curl http://localhost:8000/
 ```
 
+## 🔧 Advanced Features: LlamaIndex Integration
+
+### LlamaIndex for Large PDF Processing
+
+The application now includes LlamaIndex integration for optimized handling of large PDF documents (>10MB by default). This provides:
+
+- **Efficient PDF parsing**: Better handling of complex PDF structures
+- **Smart chunking**: Sentence-aware text splitting for improved context preservation
+- **Enhanced metadata extraction**: Rich document structure analysis
+- **Memory optimization**: Streaming processing for large files
+
+### NLTK Data Management
+
+LlamaIndex requires NLTK (Natural Language Toolkit) for text processing. The application automatically:
+
+1. **Downloads required NLTK resources** on first startup:
+   - `punkt`: Sentence tokenizer
+   - `stopwords`: Stop words for filtering
+   - `wordnet`: WordNet lexical database
+   - `averaged_perceptron_tagger`: Part-of-speech tagger
+
+2. **Handles corrupted data**: Automatically detects and replaces corrupted NLTK files
+
+3. **Provides graceful recovery**: Falls back to simpler processing if NLTK operations fail
+
+#### NLTK Troubleshooting
+
+If you encounter NLTK-related errors:
+
+```bash
+# Manual NLTK data initialization
+cd backend
+python -c "from utils.nltk_init import initialize_nltk_data; initialize_nltk_data()"
+```
+
+**Common NLTK errors and solutions**:
+
+- **"zipfile.BadZipFile: File is not a zip file"**: NLTK data files are corrupted. The system will automatically clean and re-download them.
+- **"LookupError: NLTK data not found"**: Missing NLTK resources. The system will automatically download them on first use.
+- **Network timeout**: Ensure internet connectivity for NLTK downloads.
+
+#### LlamaIndex Configuration
+
+LlamaIndex settings can be customized in your `.env` file:
+
+```env
+# LlamaIndex chunking settings
+LLAMAINDEX_CHUNK_SIZE=1000          # Characters per chunk
+LLAMAINDEX_CHUNK_OVERLAP=200        # Overlap between chunks
+LLAMAINDEX_USE_FOR_LARGE_PDFS=true  # Enable for large PDFs
+LLAMAINDEX_LARGE_PDF_THRESHOLD_MB=10 # Size threshold in MB
+
+# NLTK data location (optional)
+NLTK_DATA=/custom/path/to/nltk_data
+```
+
+### Testing LlamaIndex Integration
+
+```bash
+# Test NLTK initialization
+cd backend
+python -c "from utils.nltk_init import initialize_nltk_data; initialize_nltk_data()"
+
+# Test LlamaIndex service
+python -c "from services.llamaindex_service import llamaindex_service; print('LlamaIndex ready')"
+
+# Upload a large PDF (>10MB) to test automatic LlamaIndex usage
+# Check logs for LlamaIndex processing messages
+```
+
 
 
 ### Performance Issues
@@ -411,12 +490,17 @@ curl http://localhost:8000/
 - [ ] Frontend dependencies installed (`npm install`)
 - [ ] Environment variables configured for both backend and frontend
 - [ ] Together.ai API key set up and tested
+- [ ] Qdrant vector database configured and accessible
 - [ ] Required directories created (`uploaded_books`, `cache`, `logs`)
 - [ ] CORS origins properly configured
+- [ ] NLTK data initialized (automatic on first startup)
+- [ ] LlamaIndex configuration reviewed and optimized for your use case
 - [ ] Backend server starts successfully on port 8000
 - [ ] Frontend server starts successfully on port 3000
 - [ ] Frontend can connect to backend API
 - [ ] Basic functionality tested (login, PDF upload, chat)
+- [ ] Large PDF processing tested (upload PDF >10MB)
+- [ ] RAG functionality verified with both small and large documents
 
 ## 🎯 Post-Installation Verification
 

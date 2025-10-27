@@ -218,59 +218,28 @@ def configure_logging():
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # Set up console handler only for main worker
-    if worker_id == "1":
-        if RICH_AVAILABLE:
-            # Use Rich handler for better formatting
-            rich_handler = RichHandler(
-                console=console,
-                show_time=False,
-                show_path=False,
-                show_level=False,
-                rich_tracebacks=True,
-            )
-            rich_handler.setFormatter(CompactFormatter())
-            console_handler = DeduplicatingHandler(rich_handler)
-        else:
-            # Fallback to standard handler
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(CompactFormatter())
-            console_handler = DeduplicatingHandler(console_handler)
-
-        console_handler.setLevel(log_level)
-        root_logger.addHandler(console_handler)
-
-    # Set up file handler (simplified)
-    logs_dir = Path(__file__).parent.parent / "logs"
-    logs_dir.mkdir(exist_ok=True)
-
-    log_file = logs_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setLevel(log_level)
-
-    # Choose formatter based on LOG_FORMAT
-    if log_format == "json":
-        # Structured JSON logging for production
-        class JSONFormatter(logging.Formatter):
-            def format(self, record):
-                log_entry = {
-                    "timestamp": datetime.fromtimestamp(record.created).isoformat(),
-                    "level": record.levelname,
-                    "logger": record.name,
-                    "message": record.getMessage(),
-                }
-                if record.exc_info:
-                    log_entry["exception"] = self.formatException(record.exc_info)
-                return json.dumps(log_entry)
-
-        file_formatter = JSONFormatter()
-    else:
-        # Standard text formatter
-        file_formatter = logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
+    # Set up console handler for all workers to ensure logs are visible
+    if RICH_AVAILABLE:
+        # Use Rich handler for better formatting
+        rich_handler = RichHandler(
+            console=console,
+            show_time=False,
+            show_path=False,
+            show_level=False,
+            rich_tracebacks=True,
         )
-    file_handler.setFormatter(file_formatter)
-    root_logger.addHandler(file_handler)
+        rich_handler.setFormatter(CompactFormatter())
+        console_handler = DeduplicatingHandler(rich_handler)
+    else:
+        # Fallback to standard handler
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(CompactFormatter())
+        console_handler = DeduplicatingHandler(console_handler)
+
+    console_handler.setLevel(log_level)
+    root_logger.addHandler(console_handler)
+
+    # Removed file handler to use only RichHandler as requested
 
     # Configure specific loggers to prevent spam
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
